@@ -9,9 +9,10 @@ import {
 } from "@paperback/types";
 import { CheerioAPI } from "cheerio";
 import { decodeHTML } from "entities";
-import { TagSectionId, TagSectionTitle } from "./WeebCentralEnums";
-import { formatTagId, getRating, getShareUrl } from "./WeebCentralHelper";
+import { formatTagId, getRating, getShareUrl } from "./helpers";
+import { DEFAULT_LANGUAGE_CODE, TagSectionId, TagSectionTitle } from "./models";
 
+const officialTranslationSvgStroke = "#d8b4fe";
 export const parseMangaDetails = async (
     $: CheerioAPI,
     mangaId: string,
@@ -105,7 +106,6 @@ export const parseChapters = (
             .first()
             .text()
             .trim();
-
         let chapNum = 0;
         let chapType = "";
         const matches = title.match(floatRegex);
@@ -119,13 +119,21 @@ export const parseChapters = (
         if (!(chapType in types)) {
             types[chapType] = currTypeId--;
         }
+        const hasOfficialTranslation =
+            $("svg", chapterObj).attr("stroke") ===
+            officialTranslationSvgStroke;
+        let version = undefined;
+        if (hasOfficialTranslation) {
+            version = "Official";
+        }
         chapters.push({
             chapterId,
             title,
             chapNum,
             publishDate,
             sortingIndex,
-            langCode: "🇬🇧",
+            langCode: DEFAULT_LANGUAGE_CODE,
+            version,
             volume: 0,
             sourceManga,
         });
