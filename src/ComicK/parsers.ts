@@ -19,6 +19,7 @@ import type {
     Item,
     MangaDetails,
     SearchData,
+    Tag,
 } from "./models";
 import { COMIC_TYPE_FILTER } from "./utils/filters";
 import { getLanguageName } from "./utils/language";
@@ -41,6 +42,7 @@ export const parseMangaDetails = (
     data: MangaDetails,
     mangaId: string,
     baseUrl: string,
+    showTags: boolean,
 ): SourceManga => {
     const { comic, authors, artists } = data;
 
@@ -75,6 +77,18 @@ export const parseMangaDetails = (
             "Genres",
         ),
     );
+
+    if (showTags) {
+        tagSections.push(
+            ...parseMuTags(
+                comic.mu_comics.mu_comic_categories.map(
+                    (item) => item.mu_categories,
+                ),
+                "tags",
+                "Tags",
+            ),
+        );
+    }
 
     const bayesianRating = parseFloat(comic.bayesian_rating);
     const rating = isNaN(bayesianRating) ? undefined : bayesianRating / 10;
@@ -183,6 +197,27 @@ export function parseTags(
         .map((tag) => ({
             id: tag.slug,
             title: tag.name,
+        }));
+
+    return [
+        {
+            id: sectionId,
+            title: sectionTitle,
+            tags,
+        },
+    ];
+}
+
+export function parseMuTags(
+    data: Tag[],
+    sectionId: string,
+    sectionTitle: string,
+): TagSection[] {
+    const tags = data
+        .filter((tag) => tag.slug && tag.title)
+        .map((tag) => ({
+            id: tag.slug,
+            title: tag.title,
         }));
 
     return [
