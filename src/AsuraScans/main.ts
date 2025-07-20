@@ -101,7 +101,7 @@ export class AsuraScansExtension
         let items: DiscoverSectionItem[] = [];
         let urlBuilder = new URLBuilder(AS_DOMAIN);
         const page: number = metadata?.page ?? 1;
-        if (section.type === DiscoverSectionType.chapterUpdates) {
+        if (section.type === DiscoverSectionType.chapterUpdates && page > 1) {
             urlBuilder = urlBuilder.addPath("series");
             urlBuilder = urlBuilder.addQuery("page", page.toString());
         }
@@ -137,7 +137,7 @@ export class AsuraScansExtension
                 const $ = cheerio.load(
                     Application.arrayBufferToUTF8String(buffer),
                 );
-                items = await parseUpdateSection($);
+                items = await parseUpdateSection($, page);
                 metadata = !isLastPage($) ? { page: page + 1 } : undefined;
                 break;
             }

@@ -198,32 +198,78 @@ export const parseFeaturedSection = async (
 
 export const parseUpdateSection = async (
     $: CheerioAPI,
+    page: number,
 ): Promise<DiscoverSectionItem[]> => {
     // Latest Updates
     const updateSectionArray: DiscoverSectionItem[] = [];
-    for (const item of $("a", "div.grid.grid-cols-2").toArray()) {
-        const slug =
-            $(item).attr("href")?.replace(/\/$/, "")?.split("/").pop() ?? "";
-        if (!slug) continue;
 
-        const id = await getMangaId(slug);
+    console.log(`Page Number: ${page}`);
+    if (page == 1) {
+        console.log("here");
+        for (const item of $("div.w-full", "div.grid.grid-rows-1").toArray()) {
+            const slug =
+                $("a", item)
+                    .attr("href")
+                    ?.replace(/\/$/, "")
+                    ?.split("/")
+                    .pop() ?? "";
+            if (!slug) continue;
 
-        const image: string = $("img", item).first().attr("src") ?? "";
-        const title: string =
-            $("span.block.font-bold", item).first().text().trim() ?? "";
-        const subtitle: string =
-            $("span.block.font-bold", item).first().next().text().trim() ?? "";
+            const id = await getMangaId(slug);
 
-        updateSectionArray.push({
-            imageUrl: image,
-            title: load(title).text(),
-            mangaId: id,
-            subtitle: subtitle,
-            chapterId: subtitle.split(" ")[1],
-            type: "chapterUpdatesCarouselItem",
-            contentRating: pbconfig.contentRating,
-        });
-    }
+            const image: string = $("img", item).first().attr("src") ?? "";
+            const title: string =
+                $(".col-span-9 > .font-medium > a", item)
+                    .first()
+                    .text()
+                    .trim() ?? "";
+            let subtitle: string =
+                $(".flex.flex-col .flex-row a", item).first().text().trim() ??
+                "";
+            const subtitleContext: string =
+                $("p.flex.items-end", item).text().trim() ?? "";
+            if (subtitleContext.indexOf("Public in") !== -1) {
+                subtitle = "(Early Access) " + subtitle;
+            }
+
+            if (!id || !title) continue;
+
+            updateSectionArray.push({
+                imageUrl: image,
+                title: load(title).text(),
+                mangaId: id,
+                subtitle: subtitle,
+                chapterId: subtitle.split(" ")[1],
+                type: "chapterUpdatesCarouselItem",
+                contentRating: pbconfig.contentRating,
+            });
+        }
+    } else
+        for (const item of $("a", "div.grid.grid-cols-2").toArray()) {
+            const slug =
+                $(item).attr("href")?.replace(/\/$/, "")?.split("/").pop() ??
+                "";
+            if (!slug) continue;
+
+            const id = await getMangaId(slug);
+
+            const image: string = $("img", item).first().attr("src") ?? "";
+            const title: string =
+                $("span.block.font-bold", item).first().text().trim() ?? "";
+            const subtitle: string =
+                $("span.block.font-bold", item).first().next().text().trim() ??
+                "";
+
+            updateSectionArray.push({
+                imageUrl: image,
+                title: load(title).text(),
+                mangaId: id,
+                subtitle: subtitle,
+                chapterId: subtitle.split(" ")[1],
+                type: "chapterUpdatesCarouselItem",
+                contentRating: pbconfig.contentRating,
+            });
+        }
 
     return updateSectionArray;
 };
