@@ -25,6 +25,7 @@ import { URLBuilder } from "../utils/url-builder/array-query-variant";
 import { AS_API_DOMAIN, AS_DOMAIN } from "./config";
 import { getFilterTagsBySection } from "./helpers";
 import { AsuraInterceptor } from "./interceptor";
+import { AsuraScansMetadata, Filters, Page } from "./interfaces/interfaces";
 import {
     isLastPage,
     parseChapters,
@@ -37,11 +38,6 @@ import {
 } from "./parsers";
 import { AsuraSettingForm } from "./settings";
 import { setFilters } from "./utilities";
-import {
-    AsuraScansMetadata,
-    Filters,
-    Page,
-} from "./interfaces/interfaces";
 
 export class AsuraScansExtension
     implements

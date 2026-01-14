@@ -59,16 +59,16 @@ export interface Page {
 }
 
 export interface AsuraChapter {
-  name: number;
-  title: string | null;
-  id: number;
-  published_at: string;
-  thumbnail: string | null;
-  is_early_access: boolean;
+    name: number;
+    title: string | null;
+    id: number;
+    published_at: string;
+    thumbnail: string | null;
+    is_early_access: boolean;
 }
 
 export interface AsuraChaptersPayload {
-  chapters: AsuraChapter[];
-  comic: string;
-  loading: boolean;
+    chapters: AsuraChapter[];
+    comic: string;
+    loading: boolean;
 }

@@ -11,10 +11,10 @@ import {
 import { CheerioAPI, load } from "cheerio";
 import { URLBuilder } from "../utils/url-builder/base";
 import { AS_DOMAIN } from "./config";
-import { getShowUpcomingChapters } from "./settings";
-import { getFilter, getMangaId } from "./utilities";
 import { AsuraChaptersPayload, Filters } from "./interfaces/interfaces";
 import pbconfig from "./pbconfig";
+import { getShowUpcomingChapters } from "./settings";
+import { getFilter, getMangaId } from "./utilities";
 
 export const parseMangaDetails = async (
     $: CheerioAPI,
@@ -92,60 +92,56 @@ export const parseMangaDetails = async (
     };
 };
 
-function extractObjectContaining(
-  input: string,
-  needle: string
-): string | null {
-  const needleIndex = input.indexOf(needle);
-  if (needleIndex === -1) return null;
+function extractObjectContaining(input: string, needle: string): string | null {
+    const needleIndex = input.indexOf(needle);
+    if (needleIndex === -1) return null;
 
-  // Walk backwards to find the opening {
-  let start = -1;
-  let depth = 0;
+    // Walk backwards to find the opening {
+    let start = -1;
+    let depth = 0;
 
-  for (let i = needleIndex; i >= 0; i--) {
-    if (input[i] === "}") depth++;
-    else if (input[i] === "{") {
-      if (depth === 0) {
-        start = i;
-        break;
-      }
-      depth--;
+    for (let i = needleIndex; i >= 0; i--) {
+        if (input[i] === "}") depth++;
+        else if (input[i] === "{") {
+            if (depth === 0) {
+                start = i;
+                break;
+            }
+            depth--;
+        }
     }
-  }
 
-  if (start === -1) return null;
+    if (start === -1) return null;
 
-  // Walk forwards to find the matching }
-  depth = 0;
-  for (let i = start; i < input.length; i++) {
-    if (input[i] === "{") depth++;
-    else if (input[i] === "}") {
-      depth--;
-      if (depth === 0) {
-        return input.slice(start, i + 1);
-      }
+    // Walk forwards to find the matching }
+    depth = 0;
+    for (let i = start; i < input.length; i++) {
+        if (input[i] === "{") depth++;
+        else if (input[i] === "}") {
+            depth--;
+            if (depth === 0) {
+                return input.slice(start, i + 1);
+            }
+        }
     }
-  }
 
-  return null;
+    return null;
 }
 
 function unescapeJsString(input: string): string {
-  return input
-    .replace(/\\n/g, "\n")
-    .replace(/\\r/g, "\r")
-    .replace(/\\t/g, "\t")
-    .replace(/\\"/g, '"')
-    .replace(/\\\\/g, "\\");
+    return input
+        .replace(/\\n/g, "\n")
+        .replace(/\\r/g, "\r")
+        .replace(/\\t/g, "\t")
+        .replace(/\\"/g, '"')
+        .replace(/\\\\/g, "\\");
 }
 
 function decodeUnicodeEscapes(input: string): string {
-  return input.replace(/\\u([0-9a-fA-F]{4})/g, (_, code: string) =>
-    String.fromCharCode(parseInt(code, 16))
-  );
+    return input.replace(/\\u([0-9a-fA-F]{4})/g, (_, code: string) =>
+        String.fromCharCode(parseInt(code, 16)),
+    );
 }
-
 
 export const parseChapters = (
     $: CheerioAPI,
@@ -155,21 +151,21 @@ export const parseChapters = (
     let sortingIndex = 0;
 
     const scripts: string[] = $("script")
-    .map((_, el) => $(el).html())
-    .get()
-    .filter((s): s is string => typeof s === "string");
+        .map((_, el) => $(el).html())
+        .get()
+        .filter((s): s is string => typeof s === "string");
 
-    const flightPayloads: string[] = scripts.flatMap(script =>
+    const flightPayloads: string[] = scripts.flatMap((script) =>
         Array.from(
-        script.matchAll(/__next_f\.push\(\[1,"([\s\S]*?)"\]\)/g),
-        m => decodeUnicodeEscapes(unescapeJsString(m[1]))
-        )
+            script.matchAll(/__next_f\.push\(\[1,"([\s\S]*?)"\]\)/g),
+            (m) => decodeUnicodeEscapes(unescapeJsString(m[1])),
+        ),
     );
 
     // console.log(flightPayloads);
 
-    const chapterPayload = flightPayloads.find(p =>
-        p.includes('"chapters":[')
+    const chapterPayload = flightPayloads.find((p) =>
+        p.includes('"chapters":['),
     );
 
     if (!chapterPayload) {
@@ -184,23 +180,19 @@ export const parseChapters = (
 
     const parsed = JSON.parse(jsonText) as AsuraChaptersPayload;
     // console.log(jsonText);
-    if (
-        parsed === null ||
-        !("chapters" in parsed)
-    ) {
+    if (parsed === null || !("chapters" in parsed)) {
         throw new Error("Invalid chapters payload structure");
     }
     parsed.chapters.forEach((chapter) => {
-        if(!getShowUpcomingChapters() && chapter.is_early_access) return;
+        if (!getShowUpcomingChapters() && chapter.is_early_access) return;
         // console.log(chapter.published_at);
         const date = new Date(chapter.published_at);
         let title = chapter.title ?? "";
-        if(chapter.is_early_access){
-            if(!date) return;
+        if (chapter.is_early_access) {
+            if (!date) return;
             const hours = date.getHours() + 6;
             date.setHours(hours);
             title = `(Early Access) ${chapter.title ?? ""}`.trim();
-
         }
         chapters.push({
             chapterId: chapter.id.toString(),
@@ -214,7 +206,6 @@ export const parseChapters = (
         });
         sortingIndex++;
     });
-
 
     // for (const chapter of $(
     //     "div",
@@ -237,7 +228,6 @@ export const parseChapters = (
     //     const rawDate = $("h3", chapter).last().text().trim() ?? "";
     //     const date = new Date(rawDate.replace(/\b(\d+)(st|nd|rd|th)\b/g, "$1"));
 
-        
     // }
 
     if (chapters.length == 0) {
