@@ -197,11 +197,8 @@ export const parseChapters = (
         let title = chapter.title ?? "";
         if(chapter.is_early_access){
             if(!date) return;
-            // console.log("Early Access Chapter - Original Date:", date.);
             const hours = date.getHours() + 6;
-            // console.log(hours);
             date.setHours(hours);
-            // console.log("Early Access Chapter - Adjusted Date:", date.toUTCString());
             title = `(Early Access) ${chapter.title ?? ""}`.trim();
 
         }
