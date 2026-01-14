@@ -10,10 +10,10 @@ import {
 } from "@paperback/types";
 import { CheerioAPI, load } from "cheerio";
 import { URLBuilder } from "../utils/url-builder/base";
-import { AS_DOMAIN } from "./AsuraConfig";
-import { getShowUpcomingChapters } from "./AsuraSettings";
-import { getFilter, getMangaId } from "./AsuraUtils";
-import { Filters } from "./interfaces/AsuraScansInterfaces";
+import { AS_DOMAIN } from "./config";
+import { getShowUpcomingChapters } from "./settings";
+import { getFilter, getMangaId } from "./utilities";
+import { AsuraChaptersPayload, Filters } from "./interfaces/interfaces";
 import pbconfig from "./pbconfig";
 
 export const parseMangaDetails = async (
@@ -92,6 +92,61 @@ export const parseMangaDetails = async (
     };
 };
 
+function extractObjectContaining(
+  input: string,
+  needle: string
+): string | null {
+  const needleIndex = input.indexOf(needle);
+  if (needleIndex === -1) return null;
+
+  // Walk backwards to find the opening {
+  let start = -1;
+  let depth = 0;
+
+  for (let i = needleIndex; i >= 0; i--) {
+    if (input[i] === "}") depth++;
+    else if (input[i] === "{") {
+      if (depth === 0) {
+        start = i;
+        break;
+      }
+      depth--;
+    }
+  }
+
+  if (start === -1) return null;
+
+  // Walk forwards to find the matching }
+  depth = 0;
+  for (let i = start; i < input.length; i++) {
+    if (input[i] === "{") depth++;
+    else if (input[i] === "}") {
+      depth--;
+      if (depth === 0) {
+        return input.slice(start, i + 1);
+      }
+    }
+  }
+
+  return null;
+}
+
+function unescapeJsString(input: string): string {
+  return input
+    .replace(/\\n/g, "\n")
+    .replace(/\\r/g, "\r")
+    .replace(/\\t/g, "\t")
+    .replace(/\\"/g, '"')
+    .replace(/\\\\/g, "\\");
+}
+
+function decodeUnicodeEscapes(input: string): string {
+  return input.replace(/\\u([0-9a-fA-F]{4})/g, (_, code: string) =>
+    String.fromCharCode(parseInt(code, 16))
+  );
+}
+
+
 export const parseChapters = (
     $: CheerioAPI,
     sourceManga: SourceManga,
@@ -99,37 +154,94 @@ export const parseChapters = (
     const chapters: Chapter[] = [];
     let sortingIndex = 0;
 
-    for (const chapter of $(
-        "div",
-        "div.pl-4.pr-2.pb-4.overflow-y-auto",
-    ).toArray()) {
-        const id =
-            $("a", chapter)
-                .attr("href")
-                ?.replace(/\/$/, "")
-                ?.split("/")
-                .pop()
-                ?.trim() ?? "";
+    const scripts: string[] = $("script")
+    .map((_, el) => $(el).html())
+    .get()
+    .filter((s): s is string => typeof s === "string");
 
-        if (!id || isNaN(Number(id))) continue;
-        const svg = $("svg", chapter);
-        if (!getShowUpcomingChapters() && svg.toString() !== "") continue;
+    const flightPayloads: string[] = scripts.flatMap(script =>
+        Array.from(
+        script.matchAll(/__next_f\.push\(\[1,"([\s\S]*?)"\]\)/g),
+        m => decodeUnicodeEscapes(unescapeJsString(m[1]))
+        )
+    );
 
-        const rawDate = $("h3", chapter).last().text().trim() ?? "";
-        const date = new Date(rawDate.replace(/\b(\d+)(st|nd|rd|th)\b/g, "$1"));
+    // console.log(flightPayloads);
 
+    const chapterPayload = flightPayloads.find(p =>
+        p.includes('"chapters":[')
+    );
+
+    if (!chapterPayload) {
+        throw new Error("Chapters payload not found");
+    }
+
+    const jsonText = extractObjectContaining(chapterPayload, '"chapters":[');
+
+    if (!jsonText) {
+        throw new Error("Failed to extract chapters JSON");
+    }
+
+    const parsed = JSON.parse(jsonText) as AsuraChaptersPayload;
+    // console.log(jsonText);
+    if (
+        parsed === null ||
+        !("chapters" in parsed)
+    ) {
+        throw new Error("Invalid chapters payload structure");
+    }
+    parsed.chapters.forEach((chapter) => {
+        if(!getShowUpcomingChapters() && chapter.is_early_access) return;
+        // console.log(chapter.published_at);
+        const date = new Date(chapter.published_at);
+        let title = chapter.title ?? "";
+        if(chapter.is_early_access){
+            if(!date) return;
+            // console.log("Early Access Chapter - Original Date:", date.);
+            const hours = date.getHours() + 6;
+            // console.log(hours);
+            date.setHours(hours);
+            // console.log("Early Access Chapter - Adjusted Date:", date.toUTCString());
+            title = `(Early Access) ${chapter.title ?? ""}`.trim();
+
+        }
         chapters.push({
-            chapterId: id,
-            title: `Chapter ${id}`,
+            chapterId: chapter.id.toString(),
+            title: title,
             langCode: "🇬🇧",
-            chapNum: Number(id),
+            chapNum: chapter.name,
             volume: 0,
             publishDate: date,
             sortingIndex,
             sourceManga,
         });
-        sortingIndex--;
-    }
+        sortingIndex++;
+    });
+
+
+    // for (const chapter of $(
+    //     "div",
+    //     "div.pl-4.pr-2.pb-4.overflow-y-auto",
+    // ).toArray()) {
+    //     const id =
+    //         $("a", chapter)
+    //             .attr("href")
+    //             ?.replace(/\/$/, "")
+    //             ?.split("/")
+    //             .pop()
+    //             ?.trim() ?? "";
+
+    //     const title = $("h3", chapter).first().text().trim().split(id)[1] ?? "";
+
+    //     if (!id || isNaN(Number(id))) continue;
+    //     const svg = $("svg", chapter);
+    //     if (!getShowUpcomingChapters() && svg.toString() !== "") continue;
+
+    //     const rawDate = $("h3", chapter).last().text().trim() ?? "";
+    //     const date = new Date(rawDate.replace(/\b(\d+)(st|nd|rd|th)\b/g, "$1"));
+
+        
+    // }
 
     if (chapters.length == 0) {
         throw new Error(
@@ -137,11 +249,12 @@ export const parseChapters = (
         );
     }
 
-    return chapters.map((chapter) => {
-        if (chapter.sortingIndex != undefined)
-            chapter.sortingIndex += chapters.length;
-        return chapter;
-    });
+    // return chapters.map((chapter) => {
+    //     if (chapter.sortingIndex != undefined)
+    //         chapter.sortingIndex += chapters.length;
+    //     return chapter;
+    // });
+    return chapters;
 };
 
 export const parseChapterDetails = async (
@@ -228,7 +341,7 @@ export const parseUpdateSection = async (
                 "";
             const subtitleContext: string =
                 $("p.flex.items-end", item).text().trim() ?? "";
-            if (subtitleContext.indexOf("Public in") !== -1) {
+            if (subtitleContext.toLowerCase().indexOf("public") !== -1) {
                 subtitle = "(Early Access) " + subtitle;
             }
 

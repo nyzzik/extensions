@@ -57,3 +57,18 @@ export interface Page {
     order: number;
     url: string;
 }
+
+export interface AsuraChapter {
+  name: number;
+  title: string | null;
+  id: number;
+  published_at: string;
+  thumbnail: string | null;
+  is_early_access: boolean;
+}
+
+export interface AsuraChaptersPayload {
+  chapters: AsuraChapter[];
+  comic: string;
+  loading: boolean;
+}

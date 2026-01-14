@@ -22,9 +22,9 @@ import {
 } from "@paperback/types";
 import * as cheerio from "cheerio";
 import { URLBuilder } from "../utils/url-builder/array-query-variant";
-import { AS_API_DOMAIN, AS_DOMAIN } from "./AsuraConfig";
-import { getFilterTagsBySection } from "./AsuraHelper";
-import { AsuraInterceptor } from "./AsuraInterceptor";
+import { AS_API_DOMAIN, AS_DOMAIN } from "./config";
+import { getFilterTagsBySection } from "./helpers";
+import { AsuraInterceptor } from "./interceptor";
 import {
     isLastPage,
     parseChapters,
@@ -34,14 +34,14 @@ import {
     parseSearch,
     parseTags,
     parseUpdateSection,
-} from "./AsuraParser";
-import { AsuraSettingForm } from "./AsuraSettings";
-import { setFilters } from "./AsuraUtils";
+} from "./parsers";
+import { AsuraSettingForm } from "./settings";
+import { setFilters } from "./utilities";
 import {
     AsuraScansMetadata,
     Filters,
     Page,
-} from "./interfaces/AsuraScansInterfaces";
+} from "./interfaces/interfaces";
 
 export class AsuraScansExtension
     implements
@@ -53,8 +53,8 @@ export class AsuraScansExtension
         DiscoverSectionProviding
 {
     globalRateLimiter = new BasicRateLimiter("ratelimiter", {
-        numberOfRequests: 10,
-        bufferInterval: 0.5,
+        numberOfRequests: 4,
+        bufferInterval: 1,
         ignoreImages: true,
     });
 
@@ -247,7 +247,7 @@ export class AsuraScansExtension
             .addPath("series")
             .addPath(chapter.sourceManga.mangaId)
             .addPath("chapter")
-            .addPath(chapter.chapterId)
+            .addPath(chapter.chapNum.toString())
             .build();
 
         const request: Request = { url, method: "GET" };

@@ -1,11 +1,11 @@
 import { PaperbackInterceptor, Request, Response } from "@paperback/types";
-import { WC_DOMAIN } from "./models";
+import { AS_DOMAIN } from "./config";
 
-export class WeebCentralInterceptor extends PaperbackInterceptor {
+export class AsuraInterceptor extends PaperbackInterceptor {
     override async interceptRequest(request: Request): Promise<Request> {
         request.headers = {
             ...request.headers,
-            referer: `${WC_DOMAIN}/`,
+            referer: `${AS_DOMAIN}/`,
         };
         return request;
     }
