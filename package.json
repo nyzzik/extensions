@@ -1,5 +1,5 @@
 {
-  "name": "general-extensions",
+  "name": "extensions",
   "private": true,
   "description": "nyzzik's Paperback extensions.",
   "type": "module",
@@ -15,6 +15,9 @@
     "dev": "paperback-cli serve --watch",
     "test": "npm run tsc && npm run lint:check && npm run format:check && npm run bundle",
     "prepare": "husky"
+  },
+  "dependencies": {
+    "@paperback/runtime-polyfills": "^1.0.0-alpha.64"
   },
   "devDependencies": {
     "@paperback/toolchain": "^1.0.0-alpha.64",
