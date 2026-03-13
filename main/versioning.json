@@ -1,0 +1,57 @@
+{
+  "buildTime": "2026-03-13T09:43:09.029Z",
+  "builtWith": {
+    "toolchain": "1.0.0-alpha.64",
+    "types": "1.0.0-alpha.64"
+  },
+  "repository": {
+    "name": "extensions",
+    "description": "nyzzik's Paperback extensions."
+  },
+  "sources": [
+    {
+      "name": "Asura Scans",
+      "description": "Extension that pulls content from asuracomic.net.",
+      "version": "1.0.0-alpha.12",
+      "icon": "icon.png",
+      "language": "en",
+      "contentRating": "SAFE",
+      "capabilities": [
+        1,
+        4,
+        32,
+        64
+      ],
+      "badges": [],
+      "developers": [
+        {
+          "name": "nyzzik",
+          "github": "https://github.com/nyzzik"
+        }
+      ],
+      "id": "AsuraScans"
+    },
+    {
+      "name": "MangaGo",
+      "description": "Extension that pulls content from mangago.me.",
+      "version": "1.0.0-alpha.1",
+      "icon": "icon.png",
+      "language": "en",
+      "contentRating": "SAFE",
+      "capabilities": [
+        1,
+        4,
+        32,
+        64
+      ],
+      "badges": [],
+      "developers": [
+        {
+          "name": "nyzzik",
+          "github": "https://github.com/nyzzik"
+        }
+      ],
+      "id": "MangaGo"
+    }
+  ]
+}
