@@ -228,7 +228,13 @@ export class AsuraScansExtension
     }
 
     async getChapterDetails(chapter: Chapter): Promise<ChapterDetails> {
-        let accessToken = await getAccessToken();
+        let accessToken = "";
+        if (
+            Application.getState("accessToken") === undefined &&
+            chapter?.additionalInfo?.is_early_access
+        ) {
+            accessToken = await getAccessToken();
+        }
         // https://api.asurascans.com/api/series/a-villains-will-to-survive-7f873ca6/chapters/49
         const request = {
             url: `https://api.asurascans.com/api/series/${chapter.sourceManga.mangaId}/chapters/${chapter.chapNum}`,
