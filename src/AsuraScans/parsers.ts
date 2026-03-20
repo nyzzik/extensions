@@ -115,11 +115,13 @@ export const parseChapters = ($: CheerioAPI, sourceManga: SourceManga): Chapter[
                 // console.log(chapter.published_at);
                 const date = new Date(chapter.createdAt);
                 let title = chapter.title ?? "";
+                let additionalInfo: Record<string, string> = {};
                 if (chapter.is_locked) {
                     if (!date) return;
                     const hours = date.getHours() + 6;
                     date.setHours(hours);
                     title = `(Early Access) ${chapter.title ?? ""}`.trim();
+                    additionalInfo = { early_access: "true" };
                 }
                 chapters.push({
                     chapterId: chapter.id.toString(),
@@ -130,6 +132,7 @@ export const parseChapters = ($: CheerioAPI, sourceManga: SourceManga): Chapter[
                     publishDate: date,
                     sortingIndex: chapter.number,
                     sourceManga,
+                    additionalInfo,
                 });
             },
         );

@@ -11,7 +11,6 @@ import {
     Form,
     type MangaProviding,
     type PagedResults,
-    type Request,
     type SearchFilter,
     type SearchQuery,
     type SearchResultItem,
@@ -36,7 +35,7 @@ import {
     // parseTags,
     parseUpdateSection,
 } from "./parsers";
-import { AsuraSettingForm } from "./settings";
+import { AsuraSettingForm, getAccessToken } from "./settings";
 // import { setFilters } from "./utilities";
 
 export class AsuraScansExtension
@@ -229,50 +228,28 @@ export class AsuraScansExtension
     }
 
     async getChapterDetails(chapter: Chapter): Promise<ChapterDetails> {
-        const url = new URLBuilder(AS_DOMAIN)
-            .addPath("comics")
-            .addPath(chapter.sourceManga.mangaId)
-            .addPath("chapter")
-            .addPath(chapter.chapNum.toString())
-            .build();
-
-        const request: Request = { url, method: "GET" };
-
-        const [, buffer] = await Application.scheduleRequest(request);
-        const $ = cheerio.load(Application.arrayBufferToUTF8String(buffer));
-
-        const readerIsland = $("astro-island");
-
-        if (!readerIsland) {
-            console.error("Could not find the manga reader component.");
-            throw new Error("Manga reader component not found");
-        }
-
-        const propsRaw = readerIsland.attr("props");
-
-        if (!propsRaw) {
-            console.log("no props");
-            throw new Error("No props found in the manga reader component");
-        }
-
-        let imageUrls: string[] = [];
-        try {
-            const props = JSON.parse(propsRaw);
-
-            const pagesData = props.pages[1];
-
-            imageUrls = pagesData.map((page: any) => {
-                return page[1].url[1];
-            });
-        } catch (error) {
-            console.error("Error parsing image JSON:", error);
-            throw new Error("Failed to parse image URLs");
-        }
-        return {
-            mangaId: chapter.sourceManga.mangaId,
-            id: chapter.chapterId,
-            pages: imageUrls,
+        let accessToken = await getAccessToken();
+        // https://api.asurascans.com/api/series/a-villains-will-to-survive-7f873ca6/chapters/49
+        const request = {
+            url: `https://api.asurascans.com/api/series/${chapter.sourceManga.mangaId}/chapters/${chapter.chapNum}`,
+            headers: { Authorization: "Bearer " + accessToken },
+            method: "GET",
         };
+        if (!accessToken && chapter?.additionalInfo?.is_early_access) {
+            throw new Error(
+                "Chapter is early access and no access token is available. Please check settings.",
+            );
+        }
+        const [, buffer] = await Application.scheduleRequest(request);
+        const json = Application.arrayBufferToUTF8String(buffer);
+        const data = JSON.parse(json);
+        // console.log(data.data.chapter.pages);
+        const chapterDetails: ChapterDetails = {
+            id: chapter.chapterId,
+            mangaId: chapter.sourceManga.mangaId,
+            pages: data.data.chapter.pages.map((page: any) => page.url),
+        };
+        return chapterDetails;
     }
 
     async getGenres(): Promise<string[]> {
