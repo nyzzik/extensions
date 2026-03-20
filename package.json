@@ -1,38 +1,38 @@
 {
-  "name": "extensions",
-  "private": true,
-  "description": "nyzzik's Paperback extensions.",
-  "type": "module",
-  "scripts": {
-    "lint": "oxlint --type-aware --fix",
-    "lint:check": "oxlint --type-aware --deny-warnings",
-    "format": "oxfmt .",
-    "format:check": "oxfmt --check .",
-    "tsc": "tsc",
-    "bundle": "paperback-cli bundle",
-    "serve": "paperback-cli serve",
-    "logcat": "paperback-cli logcat",
-    "dev": "paperback-cli serve --watch",
-    "test": "npm run tsc && npm run lint:check && npm run format:check && npm run bundle",
-    "prepare": "husky"
-  },
-  "dependencies": {
-    "@paperback/runtime-polyfills": "^1.0.0-alpha.64"
-  },
-  "devDependencies": {
-    "@paperback/toolchain": "^1.0.0-alpha.64",
-    "@paperback/types": "^1.0.0-alpha.64",
-    "@types/upng-js": "^2.1.5",
-    "cheerio": "^1.2.0",
-    "fastest-levenshtein": "^1.0.16",
-    "husky": "^9.1.7",
-    "jpeg-js": "^0.4.4",
-    "oxfmt": "^0.40.0",
-    "oxlint": "^1.55.0",
-    "oxlint-tsgolint": "^0.16.0",
-    "stemmer": "^2.0.1",
-    "typescript": "^5.9.3",
-    "upng-js": "^2.1.0"
-  },
-  "repositoryName": "General Extensions (0.9)"
+    "name": "extensions",
+    "private": true,
+    "description": "nyzzik's Paperback extensions.",
+    "type": "module",
+    "scripts": {
+        "lint": "oxlint --type-aware --fix",
+        "lint:check": "oxlint --type-aware --deny-warnings",
+        "format": "oxfmt .",
+        "format:check": "oxfmt --check .",
+        "tsc": "tsc",
+        "bundle": "paperback-cli bundle",
+        "serve": "paperback-cli serve",
+        "logcat": "paperback-cli logcat",
+        "dev": "paperback-cli serve --watch",
+        "test": "npm run tsc && npm run lint:check && npm run format:check && npm run bundle",
+        "prepare": "husky"
+    },
+    "dependencies": {
+        "@paperback/runtime-polyfills": "^1.0.0-alpha.64"
+    },
+    "devDependencies": {
+        "@paperback/toolchain": "^1.0.0-alpha.64",
+        "@paperback/types": "^1.0.0-alpha.64",
+        "@types/upng-js": "^2.1.5",
+        "cheerio": "^1.2.0",
+        "fastest-levenshtein": "^1.0.16",
+        "husky": "^9.1.7",
+        "jpeg-js": "^0.4.4",
+        "oxfmt": "^0.40.0",
+        "oxlint": "^1.55.0",
+        "oxlint-tsgolint": "^0.16.0",
+        "stemmer": "^2.0.1",
+        "typescript": "^5.9.3",
+        "upng-js": "^2.1.0"
+    },
+    "repositoryName": "General Extensions (0.9)"
 }
