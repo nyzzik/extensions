@@ -3,7 +3,6 @@ import {
     Form,
     type FormSectionElement,
     InputRow,
-    LabelRow,
     Section,
     ToggleRow,
 } from "@paperback/types";
@@ -84,25 +83,11 @@ export class AsuraSettingForm extends Form {
                     value: getShowUpcomingChapters(),
                     onValueChange: Application.Selector(this as AsuraSettingForm, "preChange"),
                 }),
-                LabelRow("label", {
-                    title: "",
-                    subtitle:
-                        "Enabling HQ thumbnails will use more bandwidth and will load thumbnails slightly slower.",
-                }),
             ]),
             Section("second", [
                 ButtonRow("clearTags", {
                     title: "Clear Cached Search Tags",
                     onSelect: Application.Selector(this as AsuraSettingForm, "tagsChange"),
-                }),
-                ButtonRow("resetState", {
-                    title: "Reset All State",
-                    onSelect: Application.Selector(this as AsuraSettingForm, "resetState"),
-                }),
-                LabelRow("resetStateLabel", {
-                    title: "",
-                    subtitle:
-                        "Clicking this will reset all state for this extension. Do not click unless you know what you are doing.",
                 }),
             ]),
         ];

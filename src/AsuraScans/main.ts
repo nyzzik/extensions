@@ -47,7 +47,7 @@ export class AsuraScansExtension
         DiscoverSectionProviding
 {
     globalRateLimiter = new BasicRateLimiter("ratelimiter", {
-        numberOfRequests: 4,
+        numberOfRequests: 10,
         bufferInterval: 1,
         ignoreImages: true,
     });
@@ -362,7 +362,7 @@ export class AsuraScansExtension
         return chapterDetails;
     }
 
-    async unscramble(data: PageData): Promise<string> {
+    async unscramble(this: void, data: PageData): Promise<string> {
         const config = data;
         if (!config.url || !config.tiles || !config.tile_cols || !config.tile_rows) {
             return config.url;
