@@ -36,7 +36,11 @@ export async function getAccessToken(): Promise<string> {
     if (!Application.getState("username") || !Application.getState("password")) {
         throw new Error("Username or password not set. Please check settings.");
     }
-    if (!Application.getState("accessToken")) {
+    if (
+        !Application.getState("accessToken") ||
+        !Application.getState("tokenExpiration") ||
+        new Date() >= new Date(Application.getState("tokenExpiration") as string)
+    ) {
         const [, buffer] = await Application.scheduleRequest({
             headers: {
                 Accept: "*/*",
@@ -55,6 +59,7 @@ export async function getAccessToken(): Promise<string> {
         const responseBody = JSON.parse(Application.arrayBufferToUTF8String(buffer));
         Application.setState(responseBody.data.access_token, "accessToken");
         Application.setState(responseBody.data.refresh_token, "refreshToken");
+        Application.setState(responseBody.data.expires_at, "tokenExpiration");
     }
     return Application.getState("accessToken") as string;
 }
@@ -128,7 +133,5 @@ export class AsuraSettingForm extends Form {
         Application.setState(username, "username");
     }
 
-    async savePassword(password: string): Promise<void> {
-        Application.setState(password, "password");
-    }
+    async savePassword(_: string): Promise<void> {}
 }

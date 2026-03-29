@@ -337,7 +337,6 @@ export const parseTags = (filters: Filters): TagSection[] => {
 };
 
 export const parseSearch = async ($: CheerioAPI): Promise<SearchResultItem[]> => {
-    const collectedIds: string[] = [];
     const itemArray: SearchResultItem[] = [];
 
     let g = $("div.grid > div");
@@ -357,7 +356,7 @@ export const parseSearch = async ($: CheerioAPI): Promise<SearchResultItem[]> =>
         const image = card.find("img").attr("src") ?? "";
 
         const id = await getMangaId(slug);
-        console.log(id);
+        // console.log(id);
 
         const latestChapter = card.find("div.text-xs").first().text().trim();
 
@@ -368,8 +367,6 @@ export const parseSearch = async ($: CheerioAPI): Promise<SearchResultItem[]> =>
             subtitle: latestChapter,
             contentRating: pbconfig.contentRating,
         });
-
-        collectedIds.push(id);
     }
 
     return itemArray;

@@ -49,7 +49,10 @@ export interface Filters {
     ];
 }
 
-export interface AsuraScansMetadata {
+export interface AsuraMetadata {
+    total?: number;
+    per_page?: number;
+    has_more?: boolean;
     page?: number;
 }
 
@@ -59,10 +62,65 @@ export interface Page {
 }
 
 export interface AsuraChapter {
-    name: number;
-    title: string | null;
     id: number;
+    series_id: number;
+    number: number;
+    slug: string;
+    page_count: number;
+    is_premium: boolean;
+    comments_enabled: boolean;
     published_at: string;
-    thumbnail: string | null;
-    is_early_access: boolean;
+    view_count: number;
+    created_at: string;
+    series_slug: string;
+    is_locked: boolean;
+    title?: string;
+    early_access_until?: string;
+}
+
+export interface AsuraChapterResponse {
+    data: AsuraChapter[];
+}
+
+export interface PageData {
+    url: string;
+    tiles: number[];
+    tile_cols: number;
+    tile_rows: number;
+}
+
+export interface AsuraSearchResult {
+    data: AsuraManga[];
+    meta: AsuraMetadata;
+}
+
+export interface AsuraManga {
+    id: number;
+    slug: string;
+    title: string;
+    alt_titles: string[];
+    description: string;
+    cover: string;
+    cover_url?: string;
+    status: string;
+    type: string;
+    author: string;
+    artist: string;
+    popularity_rank: number;
+    bookmark_count: number;
+    rating: number;
+    chapter_count: number;
+    last_chapter_at: string;
+    created_at: string;
+    updated_at: string;
+    public_url: string;
+    source_url: string;
+    genres: AsuraGenre[];
+    latest_chapters: AsuraChapter[];
+}
+
+export interface AsuraGenre {
+    id: number;
+    name: string;
+    slug: string;
 }
