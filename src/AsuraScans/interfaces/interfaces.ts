@@ -22,33 +22,6 @@ export interface StatusTypes {
     COMINGSOON: string;
 }
 
-export interface Filters {
-    types: [
-        {
-            id: number;
-            name: string;
-        },
-    ];
-    genres: [
-        {
-            id: number;
-            name: string;
-        },
-    ];
-    statuses: [
-        {
-            id: number;
-            name: string;
-        },
-    ];
-    order: [
-        {
-            name: string;
-            value: string;
-        },
-    ];
-}
-
 export interface AsuraMetadata {
     total?: number;
     per_page?: number;
@@ -123,4 +96,9 @@ export interface AsuraGenre {
     id: number;
     name: string;
     slug: string;
+}
+
+export interface AsuraCreatorRequest {
+    authors: string[];
+    artists: string[];
 }

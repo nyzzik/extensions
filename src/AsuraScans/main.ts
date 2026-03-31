@@ -16,24 +16,26 @@ import {
     type SearchResultItem,
     type SearchResultsProviding,
     type SettingsFormProviding,
+    type SortingOption,
     type SourceManga,
+    type Tag,
     type TagSection,
 } from "@paperback/types";
-import * as cheerio from "cheerio";
 import { URLBuilder } from "../utils/url-builder/array-query-variant";
 import { AS_API_DOMAIN, AS_DOMAIN } from "./config";
 import { AsuraInterceptor } from "./interceptor";
 import type {
     AsuraChapterResponse,
+    AsuraCreatorRequest,
+    AsuraGenre,
+    AsuraManga,
     AsuraMetadata,
     AsuraSearchResult,
-    Filters,
     PageData,
 } from "./interfaces/interfaces";
-import { parseMangaDetails } from "./parsers";
 import { AsuraSettingForm, getAccessToken, getShowUpcomingChapters } from "./settings";
 import pbconfig from "./pbconfig";
-// import { setFilters } from "./utilities";
+import { statuses, types } from "./filters";
 
 // Application.global_setTimeout = Application.setTimeout;
 
@@ -271,14 +273,44 @@ export class AsuraScansExtension
 
     async getMangaDetails(mangaId: string): Promise<SourceManga> {
         const request = {
-            url: new URLBuilder(AS_DOMAIN).addPath("comics").addPath(mangaId).build(),
+            url: new URLBuilder(AS_API_DOMAIN)
+                .addPath("api")
+                .addPath("series")
+                .addPath(mangaId)
+                .build(),
             method: "GET",
         };
 
         const [_, buffer] = await Application.scheduleRequest(request);
 
-        const $ = cheerio.load(Application.arrayBufferToUTF8String(buffer));
-        return await parseMangaDetails($, mangaId);
+        const json = JSON.parse(Application.arrayBufferToUTF8String(buffer)) as {
+            series: AsuraManga;
+        };
+        // return await parseMangaDetails($, mangaId);
+        return {
+            mangaId: mangaId,
+            mangaInfo: {
+                primaryTitle: json.series.title,
+                secondaryTitles: json.series.alt_titles,
+                status: json.series.status,
+                author: json.series.author === "_" ? undefined : json.series.author,
+                artist: json.series.artist === "_" ? undefined : json.series.artist,
+                tagGroups: [
+                    {
+                        id: "0",
+                        title: "Genres",
+                        tags: json.series.genres.map((genre) => ({
+                            id: genre.slug,
+                            title: genre.name,
+                        })),
+                    },
+                ],
+                synopsis: json.series.description.replaceAll("<p>", "").replaceAll("</p>", "\n"),
+                thumbnailUrl: json.series.cover_url ?? json.series.cover,
+                contentRating: pbconfig.contentRating,
+                shareUrl: new URLBuilder(AS_DOMAIN).addPath("series").addPath(mangaId).build(),
+            },
+        };
     }
 
     async getChapters(sourceManga: SourceManga): Promise<Chapter[]> {
@@ -402,58 +434,103 @@ export class AsuraScansExtension
         return "";
     }
 
-    async getGenres(): Promise<string[]> {
-        try {
-            const request = {
-                url: new URLBuilder(AS_API_DOMAIN)
-                    .addPath("api")
-                    .addPath("series")
-                    .addPath("filters")
-                    .build(),
-                method: "GET",
-            };
-
-            const [_, buffer] = await Application.scheduleRequest(request);
-            const data: Filters = JSON.parse(
-                Application.arrayBufferToUTF8String(buffer),
-            ) as Filters;
-            return data.genres.map((a) => a.name);
-        } catch (error) {
-            throw new Error(error as string);
-        }
-    }
-
     // TODO: Reimplement Search Tags with new Site Changes
     async getSearchTags(): Promise<TagSection[]> {
-        // let tags = Application.getState("tags") as TagSection[];
-        // if (tags !== undefined) {
-        //     console.log("bypassing web request");
-        //     return tags;
-        // }
-        // try {
-        //     const request = {
-        //         url: new URLBuilder(AS_API_DOMAIN)
-        //             .addPath("api")
-        //             .addPath("series")
-        //             .addPath("filters")
-        //             .build(),
-        //         method: "GET",
-        //     };
+        let tagSections = Application.getState("tags") as TagSection[];
+        if (tagSections !== undefined) {
+            console.log("bypassing web request");
+            return tagSections;
+        }
+        tagSections = [];
+        let request = {
+            url: new URLBuilder(AS_API_DOMAIN).addPath("api").addPath("genres").build(),
+            method: "GET",
+        };
 
-        //     const [_, buffer] = await Application.scheduleRequest(request);
-        //     const data: Filters = JSON.parse(
-        //         Application.arrayBufferToUTF8String(buffer),
-        //     ) as Filters;
+        let [, buffer] = await Application.scheduleRequest(request);
+        let data = JSON.parse(Application.arrayBufferToUTF8String(buffer)) as {
+            data: AsuraGenre[];
+        };
 
-        //     await setFilters(data);
+        let tags: Tag[] = [];
 
-        //     tags = parseTags(data);
-        //     Application.setState(tags, "tags");
-        //     return tags;
-        // } catch (error) {
-        //     throw new Error(error as string);
-        // }
-        return [];
+        for (const genre of data.data) {
+            tags.push({
+                id: genre.slug,
+                title: genre.name,
+            });
+        }
+
+        tagSections.push({
+            id: "genres",
+            title: "Genres",
+            tags: tags,
+        });
+
+        tagSections.push({
+            id: "status",
+            title: "Status",
+            tags: statuses,
+        });
+        tagSections.push({
+            id: "type",
+            title: "Type",
+            tags: types,
+        });
+
+        tagSections.push({
+            id: "min_chapters",
+            title: "Minimum Chapters",
+            tags: [],
+        });
+
+        request = {
+            url: new URLBuilder(AS_API_DOMAIN).addPath("api").addPath("creators").build(),
+            method: "GET",
+        };
+
+        buffer = (await Application.scheduleRequest(request))[1];
+        let creators = JSON.parse(Application.arrayBufferToUTF8String(buffer)) as {
+            data: AsuraCreatorRequest;
+        };
+        let artists: Tag[] = [
+            {
+                id: "all",
+                title: "All",
+            },
+        ];
+        const authors: Tag[] = [
+            {
+                id: "all",
+                title: "All",
+            },
+        ];
+        for (const creator of creators.data.artists) {
+            artists.push({
+                id: creator.toLowerCase().replace(/\s/g, "-").replace(/[',]/g, ""),
+                title: creator,
+            });
+        }
+        for (const creator of creators.data.authors) {
+            authors.push({
+                id: creator.toLowerCase().replace(/\s/g, "-").replace(/[',]/g, ""),
+                title: creator,
+            });
+        }
+        tagSections.push({
+            id: "artist",
+            title: "Artist",
+            tags: artists,
+        });
+        tagSections.push({
+            id: "author",
+            title: "Author",
+            tags: authors,
+        });
+
+        Application.setState(tagSections, "tags");
+
+        return tagSections;
     }
 
     async supportsTagExclusion(): Promise<boolean> {
@@ -462,21 +539,42 @@ export class AsuraScansExtension
 
     async getSearchFilters(): Promise<SearchFilter[]> {
         const tags = await this.getSearchTags();
-        return tags.map((tag) => ({
-            id: tag.id,
-            title: tag.title,
-            type: "multiselect",
-            options: tag.tags.map((x) => ({ id: x.id, value: x.title })),
-            allowExclusion: false,
-            value: {},
-            allowEmptySelection: true,
-            maximum: undefined,
-        }));
+        return tags.map((tag) => {
+            if (tag.id === "genres") {
+                return {
+                    id: tag.id,
+                    title: tag.title,
+                    type: "multiselect",
+                    options: tag.tags.map((x) => ({ id: x.id, value: x.title })),
+                    allowExclusion: false,
+                    value: {},
+                    allowEmptySelection: true,
+                    maximum: undefined,
+                };
+            } else if (tag.id === "min_chapters") {
+                return {
+                    id: tag.id,
+                    title: tag.title,
+                    type: "input",
+                    placeholder: "0",
+                    value: "",
+                };
+            } else {
+                return {
+                    id: tag.id,
+                    title: tag.title,
+                    type: "dropdown",
+                    options: tag.tags.map((x) => ({ id: x.id, value: x.title })),
+                    value: "all",
+                };
+            }
+        });
     }
 
     async getSearchResults(
         query: SearchQuery,
         metadata: AsuraMetadata | undefined,
+        sortingOption: SortingOption | undefined,
     ): Promise<PagedResults<SearchResultItem>> {
         const page: number = metadata?.page ?? 0;
         // https://api.asurascans.com/api/series?search=test&sort=latest&order=desc&limit=20&offset=0
@@ -488,13 +586,27 @@ export class AsuraScansExtension
                 encodeURIComponent(query?.title.replace(/[’‘´`'-][a-z]*/g, "%") ?? ""),
             );
         }
-        // const includedTags = [];
-        // for (const filter of query.filters) {
-        //     const tags = (filter.value ?? {}) as Record<string, "included" | "excluded">;
-        //     for (const tag of Object.entries(tags)) {
-        //         includedTags.push(tag[0]);
-        //     }
-        // }
+        if (sortingOption) {
+            urlBuilder = urlBuilder.addQuery("sort", sortingOption.id);
+        } else {
+            urlBuilder = urlBuilder.addQuery("sort", "latest");
+        }
+        const includedTags = [];
+        for (const filter of query.filters) {
+            if (filter.id === "genres") {
+                // console.log(filter.value as string)
+                const tags = (filter.value ?? {}) as Record<string, "included" | "excluded">;
+                for (const tag of Object.entries(tags)) {
+                    includedTags.push(tag[0]);
+                }
+                urlBuilder = urlBuilder.addQuery("genres", includedTags);
+            } else {
+                if (filter.value === "all") continue;
+                urlBuilder = urlBuilder.addQuery(filter.id, filter.value as string);
+            }
+        }
+
+        // console.log(query.filters);
 
         // urlBuilder = urlBuilder
         //     .addQuery("genres", getFilterTagsBySection("genres", includedTags))
@@ -503,16 +615,21 @@ export class AsuraScansExtension
         //     .addQuery("order", getFilterTagsBySection("order", includedTags));
 
         urlBuilder = urlBuilder
-            .addQuery("sort", "latest")
-            .addQuery("order", "desc")
+            // .addQuery("order", "desc")
             .addQuery("limit", 20)
             .addQuery("offset", page * (metadata?.per_page ?? 20));
+
+        console.log(urlBuilder.build());
 
         const [, buffer] = await Application.scheduleRequest({
             url: urlBuilder.build(),
             method: "GET",
         });
         const json: AsuraSearchResult = JSON.parse(Application.arrayBufferToUTF8String(buffer));
+
+        if (json.data === null) {
+            return { items: [], metadata: undefined };
+        }
 
         let items: SearchResultItem[] = [];
 
@@ -527,6 +644,16 @@ export class AsuraScansExtension
         }
         metadata = json.meta.has_more ? { page: page + 1 } : undefined;
         return { items, metadata };
+    }
+
+    async getSortingOptions(_: SearchQuery): Promise<SortingOption[]> {
+        return [
+            { id: "latest", label: "Latest Update" },
+            { id: "popular", label: "Popular" },
+            { id: "rating", label: "Rating" },
+            { id: "title", label: "A-Z" },
+            { id: "newest", label: "Newest" },
+        ];
     }
 }
 
