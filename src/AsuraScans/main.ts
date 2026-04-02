@@ -49,7 +49,7 @@ export class AsuraScansExtension
         DiscoverSectionProviding
 {
     globalRateLimiter = new BasicRateLimiter("ratelimiter", {
-        numberOfRequests: 10,
+        numberOfRequests: 4,
         bufferInterval: 1,
         ignoreImages: true,
     });
