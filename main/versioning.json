@@ -1,0 +1,35 @@
+{
+  "buildTime": "2026-04-11T16:29:21.608Z",
+  "builtWith": {
+    "toolchain": "1.0.0-alpha.64",
+    "types": "1.0.0-alpha.64"
+  },
+  "repository": {
+    "name": "extensions",
+    "description": "nyzzik's Paperback extensions."
+  },
+  "sources": [
+    {
+      "name": "Asura Scans",
+      "description": "Extension that pulls content from asurascans.com.",
+      "version": "1.0.0-alpha.25",
+      "icon": "icon.png",
+      "language": "en",
+      "contentRating": "SAFE",
+      "capabilities": [
+        1,
+        4,
+        32,
+        64
+      ],
+      "badges": [],
+      "developers": [
+        {
+          "name": "nyzzik",
+          "github": "https://github.com/nyzzik"
+        }
+      ],
+      "id": "AsuraScans"
+    }
+  ]
+}
