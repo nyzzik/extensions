@@ -1,5 +1,5 @@
 {
-  "buildTime": "2026-04-11T16:27:35.500Z",
+  "buildTime": "2026-04-11T16:36:31.002Z",
   "builtWith": {
     "toolchain": "1.0.0-alpha.64",
     "types": "1.0.0-alpha.64"
@@ -12,7 +12,7 @@
     {
       "name": "Asura Scans",
       "description": "Extension that pulls content from asurascans.com.",
-      "version": "1.0.0-alpha.25",
+      "version": "1.0.0-alpha.26",
       "icon": "icon.png",
       "language": "en",
       "contentRating": "SAFE",
