@@ -268,7 +268,7 @@ export class AsuraScansExtension
     }
 
     getMangaShareUrl(mangaId: string): string {
-        return `${AS_DOMAIN}/series/${mangaId}`;
+        return `${AS_DOMAIN}/comics/${mangaId}`;
     }
 
     async getMangaDetails(mangaId: string): Promise<SourceManga> {
@@ -308,7 +308,7 @@ export class AsuraScansExtension
                 synopsis: json.series.description.replaceAll("<p>", "").replaceAll("</p>", "\n"),
                 thumbnailUrl: json.series.cover_url ?? json.series.cover,
                 contentRating: pbconfig.contentRating,
-                shareUrl: new URLBuilder(AS_DOMAIN).addPath("series").addPath(mangaId).build(),
+                shareUrl: new URLBuilder(AS_DOMAIN).addPath("comics").addPath(mangaId).build(),
             },
         };
     }
