@@ -1,3 +1,5 @@
+import { type JSONObject } from "@paperback/types";
+
 export interface Months {
     january: string;
     february: string;
@@ -22,11 +24,9 @@ export interface StatusTypes {
     COMINGSOON: string;
 }
 
-export interface AsuraMetadata {
-    total?: number;
-    per_page?: number;
-    has_more?: boolean;
+export interface AsuraMetadata extends JSONObject {
     page?: number;
+    offset?: number;
 }
 
 export interface Page {
@@ -101,4 +101,24 @@ export interface AsuraGenre {
 export interface AsuraCreatorRequest {
     authors: string[];
     artists: string[];
+}
+
+export const EMPTY_SEARCH_METADATA = {
+    genres: [],
+    seriesStatus: [],
+    seriesType: [],
+    orderIsDescending: false,
+};
+
+export interface SearchMetadata extends JSONObject {
+    genres?: string[];
+    seriesStatus?: string[];
+    seriesType?: string[];
+    orderIsDescending?: boolean;
+}
+
+export enum TagSectionId {
+    Genres = "genres",
+    SeriesStatus = "status",
+    SeriesType = "type",
 }

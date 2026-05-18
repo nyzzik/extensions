@@ -11,7 +11,6 @@ import {
     Form,
     type MangaProviding,
     type PagedResults,
-    type SearchFilter,
     type SearchQuery,
     type SearchResultItem,
     type SearchResultsProviding,
@@ -20,22 +19,27 @@ import {
     type SourceManga,
     type Tag,
     type TagSection,
+    AdvancedSearchForm,
 } from "@paperback/types";
 import { URLBuilder } from "../utils/url-builder/array-query-variant";
 import { AS_API_DOMAIN, AS_DOMAIN } from "./config";
 import { AsuraInterceptor } from "./interceptor";
-import type {
-    AsuraChapterResponse,
-    AsuraCreatorRequest,
-    AsuraGenre,
-    AsuraManga,
-    AsuraMetadata,
-    AsuraSearchResult,
-    PageData,
+import {
+    type AsuraChapterResponse,
+    type AsuraCreatorRequest,
+    type AsuraGenre,
+    type AsuraManga,
+    type AsuraMetadata,
+    type AsuraSearchResult,
+    EMPTY_SEARCH_METADATA,
+    type PageData,
+    type SearchMetadata,
+    TagSectionId,
 } from "./interfaces/interfaces";
 import { AsuraSettingForm, getAccessToken, getShowUpcomingChapters } from "./settings";
 import pbconfig from "./pbconfig";
 import { statuses, types } from "./filters";
+import { AsuraScansAdvancedSearchForm } from "./forms";
 
 // Application.global_setTimeout = Application.setTimeout;
 
@@ -139,7 +143,7 @@ export class AsuraScansExtension
                     .addPath("series")
                     .addQuery("sort", "popular")
                     .addQuery("order", "desc")
-                    .addQuery("offset", page * (metadata?.per_page ?? 20));
+                    .addQuery("offset", metadata?.offset ?? page * 20);
                 const [_, buffer] = await Application.scheduleRequest({
                     url: urlBuilder.build(),
                     method: "GET",
@@ -170,7 +174,7 @@ export class AsuraScansExtension
                     .addPath("series")
                     .addQuery("sort", "latest")
                     .addQuery("order", "desc")
-                    .addQuery("offset", page * (metadata?.per_page ?? 20));
+                    .addQuery("offset", metadata?.offset ?? page * 20);
                 const [_, buffer] = await Application.scheduleRequest({
                     url: urlB.build(),
                     method: "GET",
@@ -207,12 +211,9 @@ export class AsuraScansExtension
                             type: "genresCarouselItem",
                             searchQuery: {
                                 title: "",
-                                filters: [
-                                    {
-                                        id: tag.id,
-                                        value: { [tag.id]: "included" },
-                                    },
-                                ],
+                                metadata: {
+                                    seriesType: [tag.id],
+                                },
                             },
                             name: tag.title,
                             metadata: metadata,
@@ -227,12 +228,9 @@ export class AsuraScansExtension
                             type: "genresCarouselItem",
                             searchQuery: {
                                 title: "",
-                                filters: [
-                                    {
-                                        id: tag.id,
-                                        value: { [tag.id]: "included" },
-                                    },
-                                ],
+                                metadata: {
+                                    genres: [tag.id],
+                                },
                             },
                             name: tag.title,
                             metadata: metadata,
@@ -247,12 +245,9 @@ export class AsuraScansExtension
                             type: "genresCarouselItem",
                             searchQuery: {
                                 title: "",
-                                filters: [
-                                    {
-                                        id: tag.id,
-                                        value: { [tag.id]: "included" },
-                                    },
-                                ],
+                                metadata: {
+                                    seriesStatus: [tag.id],
+                                },
                             },
                             name: tag.title,
                             metadata: metadata,
@@ -462,18 +457,18 @@ export class AsuraScansExtension
         }
 
         tagSections.push({
-            id: "genres",
+            id: TagSectionId.Genres,
             title: "Genres",
             tags: tags,
         });
 
         tagSections.push({
-            id: "status",
+            id: TagSectionId.SeriesStatus,
             title: "Status",
             tags: statuses,
         });
         tagSections.push({
-            id: "type",
+            id: TagSectionId.SeriesType,
             title: "Type",
             tags: types,
         });
@@ -537,48 +532,22 @@ export class AsuraScansExtension
         return false;
     }
 
-    async getSearchFilters(): Promise<SearchFilter[]> {
+    async getAdvancedSearchForm(
+        searchQuery: SearchQuery<SearchMetadata>,
+    ): Promise<AdvancedSearchForm> {
         const tags = await this.getSearchTags();
-        return tags.map((tag) => {
-            if (tag.id === "genres") {
-                return {
-                    id: tag.id,
-                    title: tag.title,
-                    type: "multiselect",
-                    options: tag.tags.map((x) => ({ id: x.id, value: x.title })),
-                    allowExclusion: false,
-                    value: {},
-                    allowEmptySelection: true,
-                    maximum: undefined,
-                };
-            } else if (tag.id === "min_chapters") {
-                return {
-                    id: tag.id,
-                    title: tag.title,
-                    type: "input",
-                    placeholder: "0",
-                    value: "",
-                };
-            } else {
-                return {
-                    id: tag.id,
-                    title: tag.title,
-                    type: "dropdown",
-                    options: tag.tags.map((x) => ({ id: x.id, value: x.title })),
-                    value: "all",
-                };
-            }
-        });
+        return new AsuraScansAdvancedSearchForm(searchQuery, tags);
     }
 
     async getSearchResults(
-        query: SearchQuery,
+        query: SearchQuery<SearchMetadata>,
         metadata: AsuraMetadata | undefined,
         sortingOption: SortingOption | undefined,
     ): Promise<PagedResults<SearchResultItem>> {
         const page: number = metadata?.page ?? 0;
         // https://api.asurascans.com/api/series?search=test&sort=latest&order=desc&limit=20&offset=0
         let urlBuilder: URLBuilder = new URLBuilder(AS_API_DOMAIN).addPath("api").addPath("series");
+        query.metadata = query.metadata ?? EMPTY_SEARCH_METADATA;
 
         if (query?.title) {
             urlBuilder = urlBuilder.addQuery(
@@ -591,33 +560,29 @@ export class AsuraScansExtension
         } else {
             urlBuilder = urlBuilder.addQuery("sort", "latest");
         }
-        const includedTags = [];
-        for (const filter of query.filters) {
-            if (filter.id === "genres") {
-                // console.log(filter.value as string)
-                const tags = (filter.value ?? {}) as Record<string, "included" | "excluded">;
-                for (const tag of Object.entries(tags)) {
-                    includedTags.push(tag[0]);
-                }
-                urlBuilder = urlBuilder.addQuery("genres", includedTags);
-            } else {
-                if (filter.value === "all") continue;
-                urlBuilder = urlBuilder.addQuery(filter.id, filter.value as string);
-            }
+
+        let order = "asc";
+        if (query.metadata.orderIsDescending) {
+            order = "desc";
         }
 
-        // console.log(query.filters);
-
-        // urlBuilder = urlBuilder
-        //     .addQuery("genres", getFilterTagsBySection("genres", includedTags))
-        //     .addQuery("status", getFilterTagsBySection("status", includedTags))
-        //     .addQuery("types", getFilterTagsBySection("type", includedTags))
-        //     .addQuery("order", getFilterTagsBySection("order", includedTags));
+        if (query.metadata.genres?.length) {
+            urlBuilder = urlBuilder.addQuery("genres", query.metadata.genres.join(","));
+        }
+        const status = query.metadata.seriesStatus?.[0];
+        if (status && status !== "all") {
+            urlBuilder = urlBuilder.addQuery("status", status);
+        }
+        let seriesType = query.metadata.seriesType?.[0];
+        if (seriesType && seriesType !== "all") {
+            if (seriesType === "mangatoon") seriesType = "manga";
+            urlBuilder = urlBuilder.addQuery("type", seriesType);
+        }
 
         urlBuilder = urlBuilder
-            // .addQuery("order", "desc")
+            .addQuery("order", order)
             .addQuery("limit", 20)
-            .addQuery("offset", page * (metadata?.per_page ?? 20));
+            .addQuery("offset", metadata?.offset ?? page * 20);
 
         console.log(urlBuilder.build());
 
@@ -646,7 +611,7 @@ export class AsuraScansExtension
         return { items, metadata };
     }
 
-    async getSortingOptions(_: SearchQuery): Promise<SortingOption[]> {
+    async getSortingOptions(_: SearchQuery<SearchMetadata>): Promise<SortingOption[]> {
         return [
             { id: "latest", label: "Latest Update" },
             { id: "popular", label: "Popular" },

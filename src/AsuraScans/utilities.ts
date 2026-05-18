@@ -1,4 +1,5 @@
 import type { TagSection } from "@paperback/types";
+import type { TagSectionId } from "./interfaces/interfaces";
 
 export async function setFilters(data: TagSection[]): Promise<void> {
     for (const section of data) {
@@ -29,4 +30,12 @@ function idCleaner(str: string): string {
     }
 
     return cleanId;
+}
+
+export function getTagFromTagStore(tagId: TagSectionId, tags: TagSection[]): TagSection {
+    const tag = tags.find((x) => (x.id as TagSectionId) === tagId);
+    if (tag === undefined) {
+        throw new Error(`${tagId} Tag section not found`);
+    }
+    return tag;
 }
