@@ -1,11 +1,4 @@
-import {
-    ButtonRow,
-    Form,
-    type FormSectionElement,
-    InputRow,
-    Section,
-    ToggleRow,
-} from "@paperback/types";
+import { ButtonRow, Form, InputRow, Section, ToggleRow } from "@paperback/types";
 
 function toBoolean(value: unknown): boolean {
     return (value ?? false) === "true";
@@ -64,17 +57,17 @@ export async function getAccessToken(): Promise<string> {
 }
 
 export class AsuraSettingForm extends Form {
-    override getSections(): FormSectionElement[] {
+    override getSections() {
         return [
             Section("first", [
                 InputRow("username", {
                     title: "Username",
-                    value: Application.getState("username") as string,
+                    value: (Application.getState("username") as string) ?? "",
                     onValueChange: Application.Selector(this as AsuraSettingForm, "saveUsername"),
                 }),
                 InputRow("password", {
                     title: "Password",
-                    value: Application.getState("password") as string,
+                    value: (Application.getState("password") as string) ?? "",
                     isSecureEntry: true,
                     onValueChange: Application.Selector(this as AsuraSettingForm, "savePassword"),
                 }),
