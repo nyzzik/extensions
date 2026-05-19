@@ -576,8 +576,6 @@ export class AsuraScansExtension
             .addQuery("limit", 20)
             .addQuery("offset", page * (metadata?.per_page ?? 20));
 
-        console.log(urlBuilder.build());
-
         const [, buffer] = await Application.scheduleRequest({
             url: urlBuilder.build(),
             method: "GET",
