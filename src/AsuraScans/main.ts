@@ -31,7 +31,6 @@ import {
     type AsuraManga,
     type AsuraMetadata,
     type AsuraSearchResult,
-    EMPTY_SEARCH_METADATA,
     type PageData,
     type SearchMetadata,
     TagSectionId,
@@ -99,13 +98,7 @@ export class AsuraScansExtension
         metadata: AsuraMetadata | undefined,
     ): Promise<PagedResults<DiscoverSectionItem>> {
         let items: DiscoverSectionItem[] = [];
-        // let urlBuilder = new URLBuilder(AS_DOMAIN);
         const page: number = metadata?.page ?? 0;
-        // if (section.type === DiscoverSectionType.chapterUpdates && page > 1) {
-        //     urlBuilder = urlBuilder.addPath("series");
-        //     urlBuilder = urlBuilder.addQuery("page", page.toString());
-        // }
-
         switch (section.type) {
             case DiscoverSectionType.featured: {
                 // https://api.asurascans.com/api/trending/daily?limit=10
@@ -143,7 +136,7 @@ export class AsuraScansExtension
                     .addPath("series")
                     .addQuery("sort", "popular")
                     .addQuery("order", "desc")
-                    .addQuery("offset", metadata?.offset ?? page * 20);
+                    .addQuery("offset", page * (metadata?.per_page ?? 20));
                 const [_, buffer] = await Application.scheduleRequest({
                     url: urlBuilder.build(),
                     method: "GET",
@@ -174,7 +167,7 @@ export class AsuraScansExtension
                     .addPath("series")
                     .addQuery("sort", "latest")
                     .addQuery("order", "desc")
-                    .addQuery("offset", metadata?.offset ?? page * 20);
+                    .addQuery("offset", page * (metadata?.per_page ?? 20));
                 const [_, buffer] = await Application.scheduleRequest({
                     url: urlB.build(),
                     method: "GET",
@@ -547,7 +540,6 @@ export class AsuraScansExtension
         const page: number = metadata?.page ?? 0;
         // https://api.asurascans.com/api/series?search=test&sort=latest&order=desc&limit=20&offset=0
         let urlBuilder: URLBuilder = new URLBuilder(AS_API_DOMAIN).addPath("api").addPath("series");
-        query.metadata = query.metadata ?? EMPTY_SEARCH_METADATA;
 
         if (query?.title) {
             urlBuilder = urlBuilder.addQuery(
@@ -562,18 +554,18 @@ export class AsuraScansExtension
         }
 
         let order = "asc";
-        if (query.metadata.orderIsDescending) {
+        if (query.metadata?.orderIsDescending) {
             order = "desc";
         }
 
-        if (query.metadata.genres?.length) {
+        if (query.metadata?.genres?.length) {
             urlBuilder = urlBuilder.addQuery("genres", query.metadata.genres.join(","));
         }
-        const status = query.metadata.seriesStatus?.[0];
+        const status = query.metadata?.seriesStatus?.[0];
         if (status && status !== "all") {
             urlBuilder = urlBuilder.addQuery("status", status);
         }
-        let seriesType = query.metadata.seriesType?.[0];
+        let seriesType = query.metadata?.seriesType?.[0];
         if (seriesType && seriesType !== "all") {
             if (seriesType === "mangatoon") seriesType = "manga";
             urlBuilder = urlBuilder.addQuery("type", seriesType);
@@ -582,7 +574,7 @@ export class AsuraScansExtension
         urlBuilder = urlBuilder
             .addQuery("order", order)
             .addQuery("limit", 20)
-            .addQuery("offset", metadata?.offset ?? page * 20);
+            .addQuery("offset", page * (metadata?.per_page ?? 20));
 
         console.log(urlBuilder.build());
 

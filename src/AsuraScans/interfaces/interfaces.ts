@@ -1,4 +1,4 @@
-import { type JSONObject } from "@paperback/types";
+import type { JSONObject } from "@paperback/types";
 
 export interface Months {
     january: string;
@@ -25,8 +25,10 @@ export interface StatusTypes {
 }
 
 export interface AsuraMetadata extends JSONObject {
+    total?: number;
+    per_page?: number;
+    has_more?: boolean;
     page?: number;
-    offset?: number;
 }
 
 export interface Page {
@@ -102,13 +104,6 @@ export interface AsuraCreatorRequest {
     authors: string[];
     artists: string[];
 }
-
-export const EMPTY_SEARCH_METADATA = {
-    genres: [],
-    seriesStatus: [],
-    seriesType: [],
-    orderIsDescending: false,
-};
 
 export interface SearchMetadata extends JSONObject {
     genres?: string[];

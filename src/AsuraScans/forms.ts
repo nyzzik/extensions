@@ -8,7 +8,7 @@ import {
     type TagSection,
     ToggleRow,
 } from "@paperback/types";
-import { EMPTY_SEARCH_METADATA, type SearchMetadata, TagSectionId } from "./interfaces/interfaces";
+import { type SearchMetadata, TagSectionId } from "./interfaces/interfaces";
 import { getTagFromTagStore } from "./utilities";
 
 export class AsuraScansAdvancedSearchForm extends AdvancedSearchForm {
@@ -17,7 +17,7 @@ export class AsuraScansAdvancedSearchForm extends AdvancedSearchForm {
 
     constructor(searchQuery: SearchQuery<SearchMetadata>, tags: TagSection[]) {
         super();
-        this.searchMetadata = searchQuery.metadata ?? EMPTY_SEARCH_METADATA;
+        this.searchMetadata = searchQuery.metadata ?? {};
         this.tags = tags;
     }
 
