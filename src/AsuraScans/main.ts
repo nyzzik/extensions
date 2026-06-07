@@ -553,9 +553,9 @@ export class AsuraScansExtension
             urlBuilder = urlBuilder.addQuery("sort", "latest");
         }
 
-        let order = "asc";
-        if (query.metadata?.orderIsDescending) {
-            order = "desc";
+        let order = "desc";
+        if (!query.metadata?.orderIsDescending) {
+            order = "asc";
         }
 
         if (query.metadata?.genres?.length) {

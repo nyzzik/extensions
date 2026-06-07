@@ -105,7 +105,7 @@ export class AsuraScansAdvancedSearchForm extends AdvancedSearchForm {
             ToggleRow("order", {
                 title: "Order Descending",
                 subtitle: "Toggle on to sort in descending order",
-                value: this.searchMetadata.orderIsDescending ?? false,
+                value: this.searchMetadata.orderIsDescending ?? true,
                 onValueChange: Application.Selector(
                     this as AsuraScansAdvancedSearchForm,
                     "handleOrderChange",
