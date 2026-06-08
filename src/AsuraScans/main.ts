@@ -338,12 +338,11 @@ export class AsuraScansExtension
     }
 
     async getChapterDetails(chapter: Chapter): Promise<ChapterDetails> {
-        let accessToken: string = (Application.getState("accessToken") as string) ?? "";
-        if (chapter?.additionalInfo?.early_access) {
+        let accessToken: string = ((await getAccessToken()) as string) ?? "";
+        if (chapter?.additionalInfo?.early_access && !accessToken) {
             throw new Error(
                 `Chapter is early access. Reading early access chapters is not allowed. Please go to ${AS_DOMAIN}.`,
             );
-            accessToken = await getAccessToken();
         }
         // https://api.asurascans.com/api/series/a-villains-will-to-survive-7f873ca6/chapters/49
         const request = {
@@ -388,37 +387,37 @@ export class AsuraScansExtension
             return config.url;
         }
 
-        // const [res, buffer] = await Application.scheduleRequest({ url: config.url, method: "GET" });
-        // let contentType = res.headers["Content-Type"];
+        const [res, buffer] = await Application.scheduleRequest({ url: config.url, method: "GET" });
+        let contentType = res.headers["Content-Type"];
 
-        // let str: string = `data:${contentType};base64,${Application.base64Encode(buffer)}`;
+        let str: string = `data:${contentType};base64,${Application.base64Encode(buffer)}`;
 
-        // return new Promise((res, reject) => {
-        //     const image = new Image();
-        //     // image.crossOrigin = "Anonymous";
-        //     image.onload = () => {
-        //         const canvas = new CanvasAPI(image.width, image.height);
-        //         const ctx = canvas.getContext("2d");
+        return new Promise((res, reject) => {
+            const image = new Image();
+            // image.crossOrigin = "Anonymous";
+            image.onload = () => {
+                const canvas = new CanvasAPI(image.width, image.height);
+                const ctx = canvas.getContext("2d");
 
-        //         const tileW = image.width / config.tile_cols;
-        //         const tileH = image.height / config.tile_rows;
+                const tileW = image.width / config.tile_cols;
+                const tileH = image.height / config.tile_rows;
 
-        //         config.tiles.forEach((destIndex, sourceIndex) => {
-        //             const sx = (sourceIndex % config.tile_cols) * tileW;
-        //             const sy = Math.floor(sourceIndex / config.tile_cols) * tileH;
+                config.tiles.forEach((destIndex, sourceIndex) => {
+                    const sx = (sourceIndex % config.tile_cols) * tileW;
+                    const sy = Math.floor(sourceIndex / config.tile_cols) * tileH;
 
-        //             const dx = (destIndex % config.tile_cols) * tileW;
-        //             const dy = Math.floor(destIndex / config.tile_cols) * tileH;
+                    const dx = (destIndex % config.tile_cols) * tileW;
+                    const dy = Math.floor(destIndex / config.tile_cols) * tileH;
 
-        //             ctx.drawImage(image, sx, sy, tileW, tileH, dx, dy, tileW, tileH);
-        //         });
-        //         res(canvas.toDataURL());
-        //     };
-        //     image.onerror = () => {
-        //         reject(new Error("Failed to load image for unscrambling."));
-        //     }
-        //     image.src = str;
-        // });
+                    ctx.drawImage(image, sx, sy, tileW, tileH, dx, dy, tileW, tileH);
+                });
+                res(canvas.toDataURL());
+            };
+            image.onerror = () => {
+                reject(new Error("Failed to load image for unscrambling."));
+            };
+            image.src = str;
+        });
         return "";
     }
 
@@ -610,6 +609,12 @@ export class AsuraScansExtension
             { id: "newest", label: "Newest" },
         ];
     }
+}
+
+declare class CanvasAPI {
+    constructor(width: number, height: number);
+    getContext(contextId: "2d"): CanvasRenderingContext2D;
+    toDataURL(): string;
 }
 
 export const AsuraScans = new AsuraScansExtension();

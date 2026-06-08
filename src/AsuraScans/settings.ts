@@ -25,28 +25,15 @@ export function clearTags(): void {
 }
 
 export async function getAccessToken(): Promise<string> {
-    if (!Application.getState("username") || !Application.getState("password")) {
-        throw new Error("Username or password not set. Please check settings.");
-    }
     if (
-        !Application.getState("accessToken") ||
-        !Application.getState("tokenExpiration") ||
+        Application.getState("tokenExpiration") &&
         new Date() >= new Date(Application.getState("tokenExpiration") as string)
     ) {
+        let url = "https://api.asurascans.com/api/auth/refresh";
         const [, buffer] = await Application.scheduleRequest({
-            headers: {
-                Accept: "*/*",
-                "Accept-Language": "en-US,en;q=0.9",
-                "Content-Type": "application/json",
-                "Sec-GPC": "1",
-                "Sec-Fetch-Dest": "empty",
-                "Sec-Fetch-Mode": "cors",
-                "Sec-Fetch-Site": "same-site",
-                Priority: "u=0",
-            },
-            url: "https://api.asurascans.com/api/auth/login",
+            url,
             method: "POST",
-            body: `{"email":"${Application.getState("username") as string}","password":"${Application.getState("password") as string}"}`,
+            body: JSON.stringify({ refresh_token: Application.getState("refreshToken") }),
         });
         const responseBody = JSON.parse(Application.arrayBufferToUTF8String(buffer));
         Application.setState(responseBody.data.access_token, "accessToken");
@@ -111,5 +98,25 @@ export class AsuraSettingForm extends Form {
         Application.setState(username, "username");
     }
 
-    async savePassword(_: string): Promise<void> {}
+    async savePassword(password: string): Promise<void> {
+        const [, buffer] = await Application.scheduleRequest({
+            headers: {
+                Accept: "*/*",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Content-Type": "application/json",
+                "Sec-GPC": "1",
+                "Sec-Fetch-Dest": "empty",
+                "Sec-Fetch-Mode": "cors",
+                "Sec-Fetch-Site": "same-site",
+                Priority: "u=0",
+            },
+            url: "https://api.asurascans.com/api/auth/login",
+            method: "POST",
+            body: `{"email":"${Application.getState("username") as string}","password":"${password as string}"}`,
+        });
+        const responseBody = JSON.parse(Application.arrayBufferToUTF8String(buffer));
+        Application.setState(responseBody.data.access_token, "accessToken");
+        Application.setState(responseBody.data.refresh_token, "refreshToken");
+        Application.setState(responseBody.data.expires_at, "tokenExpiration");
+    }
 }
