@@ -17,8 +17,7 @@ import {
 } from "@paperback/types";
 import {
     readingStatuses,
-    type MyAnimeListManga,
-    type MyAnimeListMangaListStatus,
+    type MyAnimeListMangaSlim,
     type MyAnimeListReadingStatus,
     type MyAnimeListScore,
 } from "./interfaces";
@@ -26,7 +25,7 @@ import {
 export class TrackingForm extends Form {
     sourceMangaId: string;
     error?: Error;
-    titleStatus?: MyAnimeListMangaListStatus;
+    titleStatus?: MyAnimeListMangaSlim;
 
     constructor(sourceMangaId: string) {
         super();
@@ -35,25 +34,33 @@ export class TrackingForm extends Form {
 
     override formWillAppear(): void {
         const request: Request = {
-            url: `https://api.myanimelist.net/v2/manga/${this.sourceMangaId}?fields=my_list_status`,
+            url: `https://api.myanimelist.net/v2/manga/${this.sourceMangaId}?fields=my_list_status,num_chapters,num_volumes`,
             method: "GET",
         };
         Application.scheduleRequest(request)
             .then(([_, buffer]) => {
                 const json = JSON.parse(
                     Application.arrayBufferToUTF8String(buffer),
-                ) as MyAnimeListManga;
+                ) as MyAnimeListMangaSlim;
+                // if(!this.titleStatus && !json.my_list_status){
+                //     this.titleStatus.my_list_status = {
+                //         score: 0,
+                //         num_volumes_read: 0,
+                //         num_chapters_read: 0,
+                //         is_rereading: false,
+                //         priority: 0,
+                //         num_times_reread: 0,
+                //         reread_value: 0,
+                //         tags: [],
+                //         comments: "",
+                //         updated_at: "",
+                //     };
+                // }
                 if (!this.titleStatus) {
-                    this.titleStatus = json.my_list_status;
+                    this.titleStatus = json;
                 }
-            })
-            .catch((error: Error) => {
-                if (!error?.toString().includes("[404]")) {
-                    this.error = error;
-                }
-
-                if (!this.titleStatus) {
-                    this.titleStatus = {
+                if (!this.titleStatus.my_list_status) {
+                    this.titleStatus.my_list_status = {
                         score: 0,
                         num_volumes_read: 0,
                         num_chapters_read: 0,
@@ -63,7 +70,29 @@ export class TrackingForm extends Form {
                         reread_value: 0,
                         tags: [],
                         comments: "",
-                        updated_at: "",
+                    };
+                }
+            })
+            .catch((error: Error) => {
+                if (!error?.toString().includes("[404]")) {
+                    this.error = error;
+                }
+
+                if (!this.titleStatus) {
+                    this.titleStatus = {
+                        num_chapters: 0,
+                        num_volumes: 0,
+                        my_list_status: {
+                            score: 0,
+                            num_volumes_read: 0,
+                            num_chapters_read: 0,
+                            is_rereading: false,
+                            priority: 0,
+                            num_times_reread: 0,
+                            reread_value: 0,
+                            tags: [],
+                            comments: "",
+                        },
                     };
                 }
             })
@@ -80,13 +109,13 @@ export class TrackingForm extends Form {
         }
 
         const data: any = {
-            status: this.titleStatus.status ?? "reading",
-            is_rereading: this.titleStatus.is_rereading ?? false,
-            score: this.titleStatus.score ?? 0,
-            num_volumes_read: this.titleStatus.num_volumes_read ?? 0,
-            num_chapters_read: this.titleStatus.num_chapters_read ?? 0,
-            num_times_reread: this.titleStatus.num_times_reread ?? 0,
-            comments: this.titleStatus.comments ?? "",
+            status: this.titleStatus.my_list_status?.status ?? "reading",
+            is_rereading: this.titleStatus.my_list_status?.is_rereading ?? false,
+            score: this.titleStatus.my_list_status?.score ?? 0,
+            num_volumes_read: this.titleStatus.my_list_status?.num_volumes_read ?? 0,
+            num_chapters_read: this.titleStatus.my_list_status?.num_chapters_read ?? 0,
+            num_times_reread: this.titleStatus.my_list_status?.num_times_reread ?? 0,
+            comments: this.titleStatus.my_list_status?.comments ?? "",
         };
 
         const formBody = Object.keys(data)
@@ -111,10 +140,6 @@ export class TrackingForm extends Form {
     override getSections() {
         const sections: ListSectionElement[] = [];
 
-        if (this.titleStatus == undefined && this.error == undefined) {
-            return [Section("loading", [LabelRow("loading", { title: "Loading..." })])];
-        }
-
         if (this.error != undefined) {
             return [
                 Section("error", [
@@ -126,7 +151,7 @@ export class TrackingForm extends Form {
             ];
         }
 
-        if (this.titleStatus == undefined) {
+        if (this.titleStatus?.my_list_status?.updated_at === undefined) {
             sections.push(this.getNewMediaListEntrySection());
         }
 
@@ -171,7 +196,7 @@ export class TrackingForm extends Form {
 
         const statusProps: SelectRowProps = {
             title: "Status",
-            value: [this.titleStatus?.status ?? readingStatuses[0].id],
+            value: [this.titleStatus?.my_list_status?.status ?? readingStatuses[0].id],
             minItemCount: 1,
             maxItemCount: 1,
             options: statusOptions,
@@ -181,9 +206,9 @@ export class TrackingForm extends Form {
         const chapterProgressProps: StepperRowProps = {
             title: "Chapters",
             subtitle: "The highest read chapter number",
-            value: this.titleStatus?.num_chapters_read ?? 0,
+            value: this.titleStatus?.my_list_status?.num_chapters_read ?? 0,
             minValue: 0,
-            maxValue: 99999,
+            maxValue: this.titleStatus?.num_chapters ?? 9999,
             stepValue: 1,
             loopOver: false,
 
@@ -193,9 +218,9 @@ export class TrackingForm extends Form {
         const volumeProgressProps: StepperRowProps = {
             title: "Volumes",
             subtitle: "The highest read volume number",
-            value: this.titleStatus?.num_volumes_read ?? 0,
+            value: this.titleStatus?.my_list_status?.num_volumes_read ?? 0,
             minValue: 0,
-            maxValue: 99999,
+            maxValue: this.titleStatus?.num_volumes ?? 9999,
             stepValue: 1,
             loopOver: false,
             onValueChange: Application.Selector(this as TrackingForm, "volumeProgressUpdate"),
@@ -204,7 +229,7 @@ export class TrackingForm extends Form {
         const rereadCountProps: StepperRowProps = {
             title: "Reread Count",
             subtitle: "The amount of times you have reread the title",
-            value: this.titleStatus?.num_times_reread ?? 0,
+            value: this.titleStatus?.my_list_status?.num_times_reread ?? 0,
             minValue: 0,
             maxValue: 99999,
             stepValue: 1,
@@ -223,21 +248,21 @@ export class TrackingForm extends Form {
     }
 
     async statusUpdate(newStatus: string[]): Promise<void> {
-        this.titleStatus!.status = newStatus[0] as MyAnimeListReadingStatus;
+        this.titleStatus!.my_list_status!.status = newStatus[0] as MyAnimeListReadingStatus;
     }
 
     async chapterProgressUpdate(newChapterProgress: number): Promise<void> {
-        this.titleStatus!.num_chapters_read = newChapterProgress;
+        this.titleStatus!.my_list_status!.num_chapters_read = newChapterProgress;
         this.reloadForm();
     }
 
     async volumeProgressUpdate(newVolumeProgress: number): Promise<void> {
-        this.titleStatus!.num_volumes_read = newVolumeProgress;
+        this.titleStatus!.my_list_status!.num_volumes_read = newVolumeProgress;
         this.reloadForm();
     }
 
     async rereadCountUpdate(newRereadCount: number): Promise<void> {
-        this.titleStatus!.num_times_reread = newRereadCount;
+        this.titleStatus!.my_list_status!.num_times_reread = newRereadCount;
         this.reloadForm();
     }
 
@@ -245,7 +270,7 @@ export class TrackingForm extends Form {
         const scoreProps: StepperRowProps = {
             title: "Score",
             subtitle: "",
-            value: this.titleStatus!.score,
+            value: this.titleStatus?.my_list_status?.score ?? 0,
             minValue: 0,
             maxValue: 10,
             stepValue: 1,
@@ -259,14 +284,14 @@ export class TrackingForm extends Form {
     }
 
     async scoreUpdate(newScore: number): Promise<void> {
-        this.titleStatus!.score = Number(newScore.toFixed(0)) as MyAnimeListScore;
+        this.titleStatus!.my_list_status!.score = Number(newScore.toFixed(0)) as MyAnimeListScore;
         this.reloadForm();
     }
 
     getNotesSection(): ListSectionElement {
         const notesProps: InputRowProps = {
             title: "Notes",
-            value: this.titleStatus!.comments ?? "",
+            value: this.titleStatus?.my_list_status?.comments ?? "",
             onValueChange: Application.Selector(this as TrackingForm, "updateNotes"),
         };
 
@@ -281,7 +306,7 @@ export class TrackingForm extends Form {
     }
 
     async updateNotes(newNotes: string): Promise<void> {
-        this.titleStatus!.comments = newNotes;
+        this.titleStatus!.my_list_status!.comments = newNotes;
     }
 
     // getDeleteSection(): ListSectionElement {

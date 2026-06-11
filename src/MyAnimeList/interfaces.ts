@@ -1,3 +1,5 @@
+import type { JSONObject } from "@paperback/types";
+
 export interface MyAnimeListManga {
     id: number;
     title: string;
@@ -31,6 +33,15 @@ export interface MyAnimeListManga {
     related_manga: MyAnimeListRelated[];
     recommendations: MyAnimeListRecommendation[];
     serialization: MyAnimeListMangaMagazineRelationEdge[];
+}
+
+export interface MyAnimeListMangaSlim {
+    id?: number;
+    title?: string;
+    main_picture?: MyAnimeListPicture;
+    my_list_status?: MyAnimeListMangaListStatus;
+    num_volumes: number;
+    num_chapters: number;
 }
 
 export interface MyAnimeListGenre {
@@ -96,7 +107,7 @@ export interface MyAnimeListMangaListStatus {
     reread_value: number;
     tags: string[];
     comments: string;
-    updated_at: string;
+    updated_at?: string;
 }
 
 export interface MyAnimeListMangaListPost {
@@ -114,6 +125,11 @@ export interface MyAnimeListMangaListPost {
 
 export interface MyAnimeListMangaListResponse {
     data: MyAnimeListUserMangaListEdge[];
+    paging: MyAnimeListPagingObject;
+}
+
+export interface MyAnimeListMangaSearchResponse {
+    node: any[];
     paging: MyAnimeListPagingObject;
 }
 
@@ -137,6 +153,10 @@ type MyAnimeListMediaType =
     | "manhua"
     | "oel";
 type MyAnimeListPublishingStatus = "finished" | "currently_publishing" | "not_yet_published";
+
+export interface MyAnimeListMetadata extends JSONObject {
+    next?: string;
+}
 
 export const readingStatuses = [
     { id: "reading", name: "Currently Reading" },

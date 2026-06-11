@@ -18,7 +18,11 @@ import {
 } from "@paperback/types";
 import { MALSettingsForm } from "./settings";
 import { URLBuilder } from "../utils/url-builder/base";
-import type { MyAnimeListManga } from "./interfaces";
+import type {
+    MyAnimeListManga,
+    MyAnimeListMangaListResponse,
+    MyAnimeListMetadata,
+} from "./interfaces";
 import { MyAnimeListInterceptor } from "./interceptor";
 import { TrackingForm } from "./form";
 
@@ -162,23 +166,36 @@ export class MyAnimeListExtension
     }
     async getSearchResults(
         query: SearchQuery<Metadata>,
-        _metadata: Metadata | undefined,
+        metadata: MyAnimeListMetadata,
         _sortingOption: SortingOption | undefined,
     ): Promise<PagedResults<SearchResultItem>> {
-        let urlBuilder = new URLBuilder("https://api.myanimelist.net/v2/manga");
-        urlBuilder = urlBuilder.addQuery("q", query?.title ?? "");
-
+        let urlBuilder;
+        if (metadata && metadata.next && metadata.next.length > 0) {
+            urlBuilder = new URLBuilder(metadata.next);
+        } else {
+            metadata = {};
+            if (query.title == "") {
+                urlBuilder = new URLBuilder("https://api.myanimelist.net/v2/manga/ranking");
+            } else {
+                urlBuilder = new URLBuilder("https://api.myanimelist.net/v2/manga");
+                urlBuilder = urlBuilder.addQuery("q", query?.title ?? "");
+            }
+            urlBuilder = urlBuilder.addQuery("limit", 30);
+            urlBuilder = urlBuilder.addQuery("nsfw", true);
+        }
         const request: Request = {
             url: urlBuilder.build(),
             method: "GET",
         };
         let items: SearchResultItem[] = [];
         const [_, buffer] = await Application.scheduleRequest(request);
-        const response = JSON.parse(Application.arrayBufferToUTF8String(buffer));
-
+        const response = JSON.parse(
+            Application.arrayBufferToUTF8String(buffer),
+        ) as MyAnimeListMangaListResponse;
+        metadata.next = response.paging.next;
         for (const item of response.data) {
             items.push({
-                mangaId: item.node.id,
+                mangaId: item.node.id.toString(),
                 imageUrl: item.node.main_picture.medium,
                 title: item.node.title,
             });
@@ -186,6 +203,7 @@ export class MyAnimeListExtension
 
         return {
             items,
+            metadata,
         };
     }
     async getSettingsForm(): Promise<Form> {
