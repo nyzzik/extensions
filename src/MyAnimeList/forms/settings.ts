@@ -12,35 +12,35 @@ import type { MyAnimeListUserStatistics } from "../interfaces";
 
 export class MALSettingsForm extends Form {
     userInfo?: MyAnimeListUserStatistics;
+    error?: Error;
 
     override formWillAppear(): void {
-        const url = "https://api.myanimelist.net/v2/users/@me?fields=anime_statistics";
-        const request = {
-            url,
-            method: "GET",
-            headers: {
-                Authorization: `Bearer ${Application.getState("malAccessToken")}`,
-            },
-        };
-
-        Application.scheduleRequest(request)
-            .then((res) => {
-                const response = JSON.parse(
-                    Application.arrayBufferToUTF8String(res[1]),
-                ) as MyAnimeListUserStatistics;
-                this.userInfo = response;
-            })
-            .finally(() => {
-                this.reloadForm();
-            });
+        if (Application.getState("malAccessToken")) {
+            this.requestUserInfo();
+        }
     }
 
     override getSections(): FormSectionElement<unknown>[] {
-        if (this.userInfo == undefined) {
-            return [Section("loading", [LabelRow("loading", { title: "Loading..." })])];
+        let sections: ListSectionElement[] = [];
+
+        if (this.error != undefined) {
+            return [
+                Section("error", [
+                    LabelRow("error", {
+                        title: "Error",
+                        subtitle: this.error.toString(),
+                    }),
+                ]),
+            ];
         }
 
-        let sections: ListSectionElement[] = [];
+        if (
+            this.userInfo == undefined &&
+            this.error == undefined &&
+            Application.getState("malAccessToken")
+        ) {
+            return [Section("loading", [LabelRow("loading", { title: "Loading..." })])];
+        }
 
         if (Application.getState("malAccessToken") && Application.getState("malRefreshToken")) {
             sections.push(
@@ -59,7 +59,7 @@ export class MALSettingsForm extends Form {
     async handleLoginSuccess(accessToken: string, refreshToken: string): Promise<void> {
         Application.setState(accessToken, "malAccessToken");
         Application.setState(refreshToken, "malRefreshToken");
-
+        this.requestUserInfo();
         this.reloadForm();
     }
 
@@ -119,9 +119,36 @@ export class MALSettingsForm extends Form {
         Application.setState(undefined, "malAccessToken");
         Application.setState(undefined, "malRefreshToken");
         this.userInfo = undefined;
+        this.error = undefined;
+        this.reloadForm();
     }
 
     async handleNSFWToggle(value: boolean): Promise<void> {
         Application.setState(value, "nsfw");
+    }
+
+    requestUserInfo() {
+        const url = "https://api.myanimelist.net/v2/users/@me?fields=anime_statistics";
+        const request = {
+            url,
+            method: "GET",
+            headers: {
+                Authorization: `Bearer ${Application.getState("malAccessToken")}`,
+            },
+        };
+
+        Application.scheduleRequest(request)
+            .then((res) => {
+                const response = JSON.parse(
+                    Application.arrayBufferToUTF8String(res[1]),
+                ) as MyAnimeListUserStatistics;
+                this.userInfo = response;
+            })
+            .catch((err) => {
+                this.error = err;
+            })
+            .finally(() => {
+                this.reloadForm();
+            });
     }
 }
