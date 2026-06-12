@@ -20,6 +20,7 @@ import { MALSettingsForm } from "./forms/settings";
 import { URLBuilder } from "../utils/url-builder/base";
 import type {
     MyAnimeListManga,
+    MyAnimeListMangaListPost,
     MyAnimeListMangaListResponse,
     MyAnimeListMetadata,
 } from "./interfaces";
@@ -104,8 +105,9 @@ export class MyAnimeListExtension
                 continue;
             }
 
-            const data: any = {
+            const data: MyAnimeListMangaListPost = {
                 num_chapters_read: action.chapterNum,
+                status: "reading",
             };
 
             if (action.chapterVolume && action.chapterVolume > 0) {
@@ -115,7 +117,9 @@ export class MyAnimeListExtension
             const formBody = Object.keys(data)
                 .map(
                     (key) =>
-                        encodeURIComponent(key) + "=" + encodeURIComponent(data[key] as string),
+                        encodeURIComponent(key) +
+                        "=" +
+                        encodeURIComponent(data[key as keyof MyAnimeListMangaListPost] as string),
                 )
                 .join("&");
 
