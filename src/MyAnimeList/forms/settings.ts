@@ -4,6 +4,7 @@ import {
     LabelRow,
     OAuthButtonRow,
     Section,
+    ToggleRow,
     type FormSectionElement,
     type ListSectionElement,
 } from "@paperback/types";
@@ -49,6 +50,8 @@ export class MALSettingsForm extends Form {
         } else {
             sections.push(this.getLoginSection());
         }
+
+        sections.push(this.getToggleSection());
 
         return sections;
     }
@@ -101,9 +104,24 @@ export class MALSettingsForm extends Form {
         ]);
     }
 
+    getToggleSection(): ListSectionElement {
+        return Section({ id: "toggles" }, [
+            ToggleRow("safe-mode", {
+                title: "Safe Mode",
+                subtitle: "Hide NSFW content in search.",
+                value: (Application.getState("nsfw") as boolean) ?? true,
+                onValueChange: Application.Selector(this as MALSettingsForm, "handleNSFWToggle"),
+            }),
+        ]);
+    }
+
     async handleLogout(): Promise<void> {
         Application.setState(undefined, "malAccessToken");
         Application.setState(undefined, "malRefreshToken");
         this.userInfo = undefined;
+    }
+
+    async handleNSFWToggle(value: boolean): Promise<void> {
+        Application.setState(value, "nsfw");
     }
 }

@@ -3,16 +3,14 @@ import { ContentRating, SourceIntents, type ExtensionInfo } from "@paperback/typ
 export default {
     name: "MyAnimeList",
     description: "Extension that pulls content from myanimelist.net.",
-    version: "1.0.1",
+    version: "1.0.2",
     icon: "icon.png",
     language: "en",
     contentRating: ContentRating.EVERYONE,
     capabilities: [
-        SourceIntents.DISCOVER_SECTION_PROVIDING,
         SourceIntents.PROGRESS_PROVIDING,
         SourceIntents.SETTINGS_FORM_PROVIDING,
         SourceIntents.SEARCH_RESULT_PROVIDING,
-        SourceIntents.MANAGED_COLLECTION_PROVIDING,
     ],
     badges: [],
     developers: [

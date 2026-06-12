@@ -176,14 +176,17 @@ export class MyAnimeListExtension
             urlBuilder = new URLBuilder(metadata.next);
         } else {
             metadata = {};
-            if (query.title == "") {
+            if (query.title.length < 3) {
                 urlBuilder = new URLBuilder("https://api.myanimelist.net/v2/manga/ranking");
             } else {
                 urlBuilder = new URLBuilder("https://api.myanimelist.net/v2/manga");
                 urlBuilder = urlBuilder.addQuery("q", query?.title ?? "");
             }
             urlBuilder = urlBuilder.addQuery("limit", 30);
-            urlBuilder = urlBuilder.addQuery("nsfw", true);
+            urlBuilder = urlBuilder.addQuery(
+                "nsfw",
+                (Application.getState("nsfw") as boolean) ?? false,
+            );
         }
         const request: Request = {
             url: urlBuilder.build(),
