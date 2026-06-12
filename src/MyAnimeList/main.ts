@@ -16,7 +16,7 @@ import {
     type Request,
     ContentRating,
 } from "@paperback/types";
-import { MALSettingsForm } from "./settings";
+import { MALSettingsForm } from "./forms/settings";
 import { URLBuilder } from "../utils/url-builder/base";
 import type {
     MyAnimeListManga,
@@ -24,7 +24,7 @@ import type {
     MyAnimeListMetadata,
 } from "./interfaces";
 import { MyAnimeListInterceptor } from "./interceptor";
-import { TrackingForm } from "./form";
+import { TrackingForm } from "./forms/tracking";
 
 export class MyAnimeListExtension
     implements Extension, SearchResultsProviding, SettingsFormProviding, MangaProgressProviding
@@ -35,9 +35,11 @@ export class MyAnimeListExtension
         this.globalInterceptor.registerInterceptor();
     }
     async getMangaProgressManagementForm(sourceManga: SourceManga): Promise<Form> {
+        if (!Application.getState("malAccessToken")) throw new Error("You are not signed in.");
         return new TrackingForm(sourceManga.mangaId);
     }
     async getMangaProgress(sourceManga: SourceManga): Promise<MangaProgress | undefined> {
+        if (!Application.getState("malAccessToken")) throw new Error("You are not signed in.");
         const url = `https://api.myanimelist.net/v2/manga/${sourceManga.mangaId}?fields=my_list_status`;
 
         const request: Request = {
@@ -48,7 +50,7 @@ export class MyAnimeListExtension
         const [_, buffer] = await Application.scheduleRequest(request);
         const json = JSON.parse(Application.arrayBufferToUTF8String(buffer)) as MyAnimeListManga;
         if (json?.my_list_status?.num_chapters_read === undefined) {
-            throw new Error("Bruh");
+            throw new Error("Not yet tracking.");
         }
 
         return {

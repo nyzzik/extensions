@@ -20,7 +20,7 @@ import {
     type MyAnimeListMangaSlim,
     type MyAnimeListReadingStatus,
     type MyAnimeListScore,
-} from "./interfaces";
+} from "../interfaces";
 
 export class TrackingForm extends Form {
     sourceMangaId: string;
@@ -34,7 +34,7 @@ export class TrackingForm extends Form {
 
     override formWillAppear(): void {
         const request: Request = {
-            url: `https://api.myanimelist.net/v2/manga/${this.sourceMangaId}?fields=my_list_status,num_chapters,num_volumes`,
+            url: `https://api.myanimelist.net/v2/manga/${this.sourceMangaId}?fields=my_list_status{score,num_volumes_read,num_chapters_read,is_rereading,priority,num_times_reread,reread_value,tags,comments},num_chapters,num_volumes`,
             method: "GET",
         };
         Application.scheduleRequest(request)
@@ -42,20 +42,6 @@ export class TrackingForm extends Form {
                 const json = JSON.parse(
                     Application.arrayBufferToUTF8String(buffer),
                 ) as MyAnimeListMangaSlim;
-                // if(!this.titleStatus && !json.my_list_status){
-                //     this.titleStatus.my_list_status = {
-                //         score: 0,
-                //         num_volumes_read: 0,
-                //         num_chapters_read: 0,
-                //         is_rereading: false,
-                //         priority: 0,
-                //         num_times_reread: 0,
-                //         reread_value: 0,
-                //         tags: [],
-                //         comments: "",
-                //         updated_at: "",
-                //     };
-                // }
                 if (!this.titleStatus) {
                     this.titleStatus = json;
                 }
@@ -158,18 +144,12 @@ export class TrackingForm extends Form {
         const trackingSections: ListSectionElement[] = [
             ...this.getProgressSections(),
             ...this.getScoreSections(),
-            this.getNotesSection(),
+            this.getCommentsSection(),
         ];
-
-        // TODO: Add support for custom lists
 
         for (const trackingSection of trackingSections) {
             sections.push(trackingSection);
         }
-
-        // if (this.titleStatus != undefined) {
-        //     sections.push(this.getDeleteSection());
-        // }
 
         return sections;
     }
@@ -208,7 +188,8 @@ export class TrackingForm extends Form {
             subtitle: "The highest read chapter number",
             value: this.titleStatus?.my_list_status?.num_chapters_read ?? 0,
             minValue: 0,
-            maxValue: this.titleStatus?.num_chapters ?? 9999,
+            maxValue:
+                (this.titleStatus?.num_chapters ?? 0) ? this.titleStatus!.num_chapters! : 9999,
             stepValue: 1,
             loopOver: false,
 
@@ -220,7 +201,7 @@ export class TrackingForm extends Form {
             subtitle: "The highest read volume number",
             value: this.titleStatus?.my_list_status?.num_volumes_read ?? 0,
             minValue: 0,
-            maxValue: this.titleStatus?.num_volumes ?? 9999,
+            maxValue: (this.titleStatus?.num_volumes ?? 0) ? this.titleStatus!.num_volumes! : 9999,
             stepValue: 1,
             loopOver: false,
             onValueChange: Application.Selector(this as TrackingForm, "volumeProgressUpdate"),
@@ -278,8 +259,6 @@ export class TrackingForm extends Form {
             onValueChange: Application.Selector(this as TrackingForm, "scoreUpdate"),
         };
 
-        // TODO: Add support for advanced scores
-
         return [Section({ id: "score", header: "Score" }, [StepperRow("score", scoreProps)])];
     }
 
@@ -288,86 +267,24 @@ export class TrackingForm extends Form {
         this.reloadForm();
     }
 
-    getNotesSection(): ListSectionElement {
-        const notesProps: InputRowProps = {
-            title: "Notes",
+    getCommentsSection(): ListSectionElement {
+        const commentsProps: InputRowProps = {
+            title: "Comments",
             value: this.titleStatus?.my_list_status?.comments ?? "",
-            onValueChange: Application.Selector(this as TrackingForm, "updateNotes"),
+            onValueChange: Application.Selector(this as TrackingForm, "updateComments"),
         };
 
         return Section(
             {
-                id: "notes",
-                header: "Notes",
+                id: "comments",
+                header: "Comments",
                 footer: "Only you can see your notes",
             },
-            [InputRow("notes", notesProps)],
+            [InputRow("comments", commentsProps)],
         );
     }
 
-    async updateNotes(newNotes: string): Promise<void> {
-        this.titleStatus!.my_list_status!.comments = newNotes;
+    async updateComments(newComments: string): Promise<void> {
+        this.titleStatus!.my_list_status!.comments = newComments;
     }
-
-    // getDeleteSection(): ListSectionElement {
-    //     const deleteNavigationProps: NavigationRowProps = {
-    //         title: "Delete",
-    //         form: new DeletionForm(this.titleStatus!),
-    //     };
-
-    //     return Section({ id: "delete", footer: "Delete the title from your media list" }, [
-    //         NavigationRow("delete", deleteNavigationProps),
-    //     ]);
-    // }
 }
-
-// class DeletionForm extends Form {
-//     mediaListId: number | null;
-
-//     constructor(mediaListId: number) {
-//         super();
-//         this.mediaListId = mediaListId;
-//     }
-
-//     override getSections() {
-//         if (this.mediaListId == null) {
-//             const deletedLabelProps: LabelRowProps = {
-//                 title: "Deleted",
-//                 subtitle: "The title has been succesfully deleted from your media list",
-//             };
-
-//             return [Section("deleted", [LabelRow("deleted", deletedLabelProps)])];
-//         }
-
-//         const deleteButtonProps: ButtonRowProps = {
-//             title: "Delete",
-//             onSelect: Application.Selector(this as DeletionForm, "onDeletion"),
-//         };
-
-//         return [
-//             Section(
-//                 {
-//                     id: "delete",
-//                     footer: "WARNING: All media list data will be deleted, this action can not be undone",
-//                 },
-//                 [ButtonRow("delete", deleteButtonProps)],
-//             ),
-//         ];
-//     }
-
-//     async onDeletion(): Promise<void> {
-//         const deletionVariables: TitleProgressDeletionVariables = {
-//             deleteMediaListEntryId: this.mediaListId!,
-//         };
-
-//         const titleProgressDeletion = await makeRequest<
-//             TitleProgressDeletion,
-//             TitleProgressDeletionVariables
-//         >(titleProgressDeletionMutation, true, deletionVariables);
-
-//         if (titleProgressDeletion.DeleteMediaListEntry.deleted) {
-//             this.mediaListId = null;
-//             this.reloadForm();
-//         }
-//     }
-// }
