@@ -1,8 +1,8 @@
 {
-  "buildTime": "2026-06-12T22:12:36.784Z",
+  "buildTime": "2026-06-22T03:39:41.706Z",
   "builtWith": {
-    "toolchain": "1.0.0-alpha.87",
-    "types": "1.0.0-alpha.87"
+    "toolchain": "1.0.0-alpha.92",
+    "types": "1.0.0-alpha.92"
   },
   "repository": {
     "name": "extensions",
@@ -34,7 +34,7 @@
     {
       "name": "Dynasty Reader",
       "description": "Extension that pulls content from dynasty-scans.com.",
-      "version": "1.0.0-alpha.1",
+      "version": "1.0.0",
       "icon": "icon.png",
       "language": "en",
       "contentRating": "ADULT",
@@ -54,9 +54,31 @@
       "id": "DynastyReader"
     },
     {
+      "name": "MangaGo",
+      "description": "Extension that pulls content from mangago.me.",
+      "version": "1.0.0-alpha.1",
+      "icon": "icon.png",
+      "language": "en",
+      "contentRating": "SAFE",
+      "capabilities": [
+        1,
+        4,
+        32,
+        64
+      ],
+      "badges": [],
+      "developers": [
+        {
+          "name": "nyzzik",
+          "github": "https://github.com/nyzzik"
+        }
+      ],
+      "id": "MangaGo"
+    },
+    {
       "name": "MyAnimeList",
       "description": "Extension that pulls content from myanimelist.net.",
-      "version": "1.0.4",
+      "version": "1.0.5",
       "icon": "icon.png",
       "language": "en",
       "contentRating": "SAFE",

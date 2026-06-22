@@ -1,1 +1,1 @@
-{"name":"MyAnimeList","description":"Extension that pulls content from myanimelist.net.","version":"1.0.4","icon":"icon.png","language":"en","contentRating":"SAFE","capabilities":[2,32,64],"badges":[],"developers":[{"name":"nyzzik","github":"https://github.com/nyzzik"}],"id":"MyAnimeList"}
+{"name":"MyAnimeList","description":"Extension that pulls content from myanimelist.net.","version":"1.0.5","icon":"icon.png","language":"en","contentRating":"SAFE","capabilities":[2,32,64],"badges":[],"developers":[{"name":"nyzzik","github":"https://github.com/nyzzik"}],"id":"MyAnimeList"}
