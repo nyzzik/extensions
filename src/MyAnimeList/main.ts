@@ -176,6 +176,9 @@ export class MyAnimeListExtension
         _sortingOption: SortingOption | undefined,
     ): Promise<PagedResults<SearchResultItem>> {
         let urlBuilder;
+        if (!Application.getState("malAccessToken")) {
+            throw new Error("You are not signed in.");
+        }
         if (metadata && metadata.next && metadata.next.length > 0) {
             urlBuilder = new URLBuilder(metadata.next);
         } else {
