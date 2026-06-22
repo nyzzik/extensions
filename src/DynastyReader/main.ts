@@ -65,6 +65,10 @@ export class DynastyReaderExtension
         const status = response.tags.find((x) => x.type == "Status");
 
         const description = response?.description?.replace(/<[^>]*>?/gm, "").trim() ?? "";
+        let name = "";
+        if (response.type === "Doujin") {
+            name = response.name + " " + response.type;
+        }
 
         return {
             mangaId,
@@ -75,11 +79,11 @@ export class DynastyReaderExtension
                     `${DS_DOMAIN}${response.cover}`,
                 ),
                 synopsis: description,
-                primaryTitle: response.name,
+                primaryTitle: name,
                 secondaryTitles: response.aliases,
                 contentRating:
                     response.type === "Doujin" ? ContentRating.ADULT : ContentRating.MATURE,
-                author: author[0].name,
+                author: author[0]?.name ?? undefined,
                 status: status?.name,
             },
         };
@@ -132,9 +136,13 @@ export class DynastyReaderExtension
 
         const chapters: Chapter[] = [];
 
-        const chapterRegex = /Chapter (\d+(\.\d+)?):(.+)/;
+        // const chapterRegex = /Chapter\s+(\d+(\.\d+)?)(.*)/;
+        const chapterRegex = /Chapter\s+(\d+(\.\d+)?)?(.*)/;
         const volumeRegex = /Volume (\d+(\.\d+)?)/;
+
+        let index = 0;
         let volNum = 0;
+        let chapNum = 0;
         switch (response.type) {
             // For doujin/alice_quartet
             case "Doujin":
@@ -144,23 +152,26 @@ export class DynastyReaderExtension
                     let volNumRegex;
                     if (chapter.header) {
                         volNumRegex = chapter.header.match(volumeRegex);
-                        if (volNumRegex && volNumRegex[1]) volNum = Number(volNumRegex[1]);
+                        if (volNumRegex && volNumRegex[0]) volNum = Number(volNumRegex[1]);
                         else volNum = 0;
                     }
                     if (!chapter.permalink || !chapter.title) continue;
 
                     const chapNumRegex = chapter.title.match(chapterRegex);
-                    let chapNum = 0;
+
                     let chapTitle = chapter.title;
-                    if (chapNumRegex && chapNumRegex[1]) chapNum = Number(chapNumRegex[1]);
-                    if (chapNumRegex && chapNumRegex[3]) chapTitle = chapNumRegex[3];
+                    if (chapNumRegex && chapNumRegex[1]) chapNum = parseFloat(chapNumRegex[1]);
+                    else chapNum += 0.1;
+                    // else chapNum = chapter.permalink.split("ch")[1] ? Number(chapter.permalink.split("ch")[1]) : 0;
+                    if (chapNumRegex && chapNumRegex[3] !== undefined)
+                        chapTitle = chapNumRegex[3].replace(":", "").trim();
 
                     chapters.push({
                         chapterId: chapter.permalink,
                         title: chapTitle.trim(),
                         langCode: "en",
-                        chapNum: chapNum,
-                        sortingIndex: response.taggings.indexOf(chapter),
+                        chapNum: parseFloat(chapNum.toFixed(1)),
+                        sortingIndex: ++index,
                         version: chapter.tags.find((x) => x.type === "Scanlator")?.name,
                         publishDate: new Date(chapter.released_on),
                         volume: volNum,
@@ -176,6 +187,8 @@ export class DynastyReaderExtension
         if (chapters.length == 0) {
             throw new Error(`Couldn't find any chapters for mangaId: ${sourceManga.mangaId}!`);
         }
+
+        console.log(JSON.stringify(chapters));
 
         // return chapters.map(chapter => {
         //     if(chapter.sortingIndex)

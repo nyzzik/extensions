@@ -3,7 +3,7 @@ import { ContentRating, SourceIntents, type ExtensionInfo } from "@paperback/typ
 export default {
     name: "Dynasty Reader",
     description: "Extension that pulls content from dynasty-scans.com.",
-    version: "1.0.0-alpha.1",
+    version: "1.0.0",
     icon: "icon.png",
     language: "en",
     contentRating: ContentRating.ADULT,
