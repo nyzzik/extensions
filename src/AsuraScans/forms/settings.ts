@@ -35,20 +35,21 @@ export function clearTags(): void {
 }
 
 export async function getAccessToken(): Promise<string> {
-    let url = "https://api.asurascans.com/api/auth/refresh";
-    const [res, buffer] = await Application.scheduleRequest({
-        url,
-        method: "POST",
-        body: JSON.stringify({ refresh_token: Application.getState("refreshToken") }),
-    });
-    if (res.status !== 200) {
-        throw new Error("Access token expired. Please sign in again.");
+    if (Application.getState("accessToken")) {
+        let url = "https://api.asurascans.com/api/auth/refresh";
+        const [res, buffer] = await Application.scheduleRequest({
+            url,
+            method: "POST",
+            body: JSON.stringify({ refresh_token: Application.getState("refreshToken") }),
+        });
+        if (res.status !== 200) {
+            throw new Error("Access token expired. Please sign in again.");
+        }
+        const responseBody = JSON.parse(Application.arrayBufferToUTF8String(buffer));
+        Application.setState(responseBody.data.access_token, "accessToken");
+        Application.setState(responseBody.data.refresh_token, "refreshToken");
+        Application.setState(responseBody.data.expires_at, "tokenExpiration");
     }
-    const responseBody = JSON.parse(Application.arrayBufferToUTF8String(buffer));
-    Application.setState(responseBody.data.access_token, "accessToken");
-    Application.setState(responseBody.data.refresh_token, "refreshToken");
-    Application.setState(responseBody.data.expires_at, "tokenExpiration");
-
     return Application.getState("accessToken") as string;
 }
 
