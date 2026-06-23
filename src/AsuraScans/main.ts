@@ -20,11 +20,18 @@ import {
     type Tag,
     type TagSection,
     AdvancedSearchForm,
+    type MangaProgressProviding,
+    type ChapterReadActionQueueProcessingResult,
+    type MangaProgress,
+    type TrackedMangaChapterReadAction,
+    type ExtensionImpl,
+    type Request,
 } from "@paperback/types";
 import { URLBuilder } from "../utils/url-builder/array-query-variant";
 import { AS_API_DOMAIN, AS_DOMAIN } from "./config";
 import { AsuraInterceptor } from "./interceptor";
 import {
+    type AsuraBookmarkResponse,
     type AsuraChapterResponse,
     type AsuraCreatorRequest,
     type AsuraGenre,
@@ -35,22 +42,154 @@ import {
     type SearchMetadata,
     TagSectionId,
 } from "./interfaces/interfaces";
-import { AsuraSettingForm, getAccessToken, getShowUpcomingChapters } from "./settings";
-import pbconfig from "./pbconfig";
+import { AsuraSettingForm, getAccessToken, getShowUpcomingChapters } from "./forms/settings";
 import { statuses, types } from "./filters";
 import { AsuraScansAdvancedSearchForm } from "./forms";
+import AsuraConfig from "./pbconfig";
 
 // Application.global_setTimeout = Application.setTimeout;
 
-export class AsuraScansExtension
-    implements
-        Extension,
-        SearchResultsProviding,
-        MangaProviding,
-        ChapterProviding,
-        SettingsFormProviding,
-        DiscoverSectionProviding
-{
+export class AsuraScansExtension implements ExtensionImpl<typeof AsuraConfig> {
+    getMangaProgressManagementForm(sourceManga: SourceManga): Promise<Form> {
+        throw new Error("Method not implemented.");
+    }
+    async getMangaProgress(sourceManga: SourceManga): Promise<MangaProgress> {
+        let request: Request = {
+            url: new URLBuilder(AS_API_DOMAIN)
+                .addPath("api")
+                .addPath("me")
+                .addPath("bookmarks")
+                .addQuery("search", sourceManga.mangaInfo.primaryTitle)
+                .build(),
+            method: "GET",
+            headers: {
+                Authorization: `Bearer ${await getAccessToken()}`,
+            },
+        };
+
+        let [res, buffer] = await Application.scheduleRequest(request);
+        if (res.status !== 200) {
+            throw new Error("Failed to fetch manga progress.");
+        }
+        let response = JSON.parse(
+            Application.arrayBufferToUTF8String(buffer),
+        ) as AsuraBookmarkResponse;
+
+        let title = response.data.find((bookmark) => bookmark.series.slug === sourceManga.mangaId);
+        if (title === undefined) {
+            throw new Error("Manga not found in bookmarks.");
+        }
+        return {
+            sourceManga,
+            lastReadChapter: {
+                chapterId: title.last_read_chapter.toString(),
+                volume: 0,
+                sourceManga,
+                langCode: "en",
+                chapNum: title.last_read_chapter,
+            },
+            lastReadTime: new Date(title.last_read_at),
+            userRating: 0,
+        };
+    }
+    async processChapterReadActionQueue(
+        actions: TrackedMangaChapterReadAction[],
+    ): Promise<ChapterReadActionQueueProcessingResult> {
+        const trackedReadActions: ChapterReadActionQueueProcessingResult = {
+            successfulItems: [],
+            failedItems: [],
+        };
+
+        if (!Application.getState("user")) {
+            return trackedReadActions;
+        }
+        const highestChapters: Map<string, number> = new Map();
+        for (const action of actions) {
+            if ((highestChapters.get(action.sourceManga.mangaId) ?? 0) < action.chapterNum) {
+                highestChapters.set(action.sourceManga.mangaId, action.chapterNum);
+            }
+        }
+
+        for (const action of actions) {
+            if (highestChapters.get(action.sourceManga.mangaId) != action.chapterNum) {
+                trackedReadActions.successfulItems.push(action.id);
+                continue;
+            }
+
+            let request: Request = {
+                url: new URLBuilder(AS_API_DOMAIN)
+                    .addPath("api")
+                    .addPath("me")
+                    .addPath("bookmarks")
+                    .addQuery("search", action.sourceManga.mangaInfo.primaryTitle)
+                    .build(),
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${await getAccessToken()}`,
+                },
+            };
+
+            let [_, buffer] = await Application.scheduleRequest(request);
+            const json = JSON.parse(
+                Application.arrayBufferToUTF8String(buffer),
+            ) as AsuraBookmarkResponse;
+
+            let id = action.sourceManga.mangaInfo.additionalInfo?.id;
+            if (id === undefined) {
+                trackedReadActions.failedItems.push(action.id);
+                continue;
+            }
+
+            let title = json.data.find(
+                (bookmark) => bookmark.series.slug === action.sourceManga.mangaId,
+            );
+            if (title === undefined) {
+                let request: Request = {
+                    url: new URLBuilder(AS_API_DOMAIN)
+                        .addPath("api")
+                        .addPath("bookmarks")
+                        .addPath(id)
+                        .build(),
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${await getAccessToken()}`,
+                    },
+                };
+                let [res, _] = await Application.scheduleRequest(request);
+                if (res.status !== 200) {
+                    trackedReadActions.failedItems.push(action.id);
+                }
+            } else {
+                if ((title.last_read_chapter ?? 0) >= action.chapterNum) {
+                    trackedReadActions.successfulItems.push(action.id);
+                    continue;
+                }
+            }
+            const post: Request = {
+                url: new URLBuilder(AS_API_DOMAIN)
+                    .addPath("api")
+                    .addPath("bookmarks")
+                    .addPath(id)
+                    .addPath("read")
+                    .addPath(action.chapterNum.toString())
+                    .build(),
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${await getAccessToken()}`,
+                },
+            };
+
+            const [res, _2] = await Application.scheduleRequest(post);
+            if (res.status === 200) {
+                trackedReadActions.successfulItems.push(action.id);
+            } else {
+                trackedReadActions.failedItems.push(action.id);
+            }
+        }
+
+        return trackedReadActions;
+    }
+
     globalRateLimiter = new BasicRateLimiter("ratelimiter", {
         numberOfRequests: 6,
         bufferInterval: 1,
@@ -123,7 +262,7 @@ export class AsuraScansExtension
                         title: manga.title,
                         mangaId: manga.slug,
                         type: "featuredCarouselItem",
-                        contentRating: pbconfig.contentRating,
+                        contentRating: AsuraConfig.contentRating,
                     });
                 }
                 metadata = undefined;
@@ -152,7 +291,7 @@ export class AsuraScansExtension
                         mangaId: manga.slug,
                         subtitle: `Chapter ${manga.latest_chapters[0].number.toString()}${new Date(manga.latest_chapters[0].early_access_until ?? "") > new Date() ? " - (Early Access)" : ""}`,
                         type: "simpleCarouselItem",
-                        contentRating: pbconfig.contentRating,
+                        contentRating: AsuraConfig.contentRating,
                     });
                 }
 
@@ -186,7 +325,7 @@ export class AsuraScansExtension
                         subtitle: `Chapter ${manga.latest_chapters[0].number.toString()}${new Date(manga.latest_chapters[0].early_access_until ?? "") > new Date() ? " - (Early Access)" : ""}`,
                         chapterId: manga.latest_chapters[0].id.toString(),
                         type: "chapterUpdatesCarouselItem",
-                        contentRating: pbconfig.contentRating,
+                        contentRating: AsuraConfig.contentRating,
                     });
                 }
 
@@ -295,8 +434,11 @@ export class AsuraScansExtension
                 ],
                 synopsis: json.series.description.replaceAll("<p>", "").replaceAll("</p>", "\n"),
                 thumbnailUrl: json.series.cover_url ?? json.series.cover,
-                contentRating: pbconfig.contentRating,
+                contentRating: AsuraConfig.contentRating,
                 shareUrl: new URLBuilder(AS_DOMAIN).addPath("comics").addPath(mangaId).build(),
+                additionalInfo: {
+                    id: json.series.id.toString(),
+                },
             },
         };
     }
@@ -593,7 +735,7 @@ export class AsuraScansExtension
                 title: manga.title,
                 mangaId: manga.slug,
                 subtitle: `Chapter ${manga.latest_chapters[0].number.toString()}${new Date(manga.latest_chapters[0].early_access_until ?? "") > new Date() ? " - (Early Access)" : ""}`,
-                contentRating: pbconfig.contentRating,
+                contentRating: AsuraConfig.contentRating,
             });
         }
         metadata = json.meta.has_more ? { page: page + 1 } : undefined;

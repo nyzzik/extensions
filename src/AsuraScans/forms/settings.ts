@@ -1,4 +1,14 @@
-import { ButtonRow, Form, InputRow, Section, ToggleRow } from "@paperback/types";
+import {
+    ButtonRow,
+    Form,
+    InputRow,
+    LabelRow,
+    Section,
+    ToggleRow,
+    type FormSectionElement,
+    type ListSectionElement,
+} from "@paperback/types";
+import type { AsuraUser } from "../interfaces/interfaces";
 
 function toBoolean(value: unknown): boolean {
     return (value ?? false) === "true";
@@ -25,52 +35,92 @@ export function clearTags(): void {
 }
 
 export async function getAccessToken(): Promise<string> {
-    if (
-        Application.getState("tokenExpiration") &&
-        new Date() >= new Date(Application.getState("tokenExpiration") as string)
-    ) {
-        let url = "https://api.asurascans.com/api/auth/refresh";
-        const [, buffer] = await Application.scheduleRequest({
-            url,
-            method: "POST",
-            body: JSON.stringify({ refresh_token: Application.getState("refreshToken") }),
-        });
-        const responseBody = JSON.parse(Application.arrayBufferToUTF8String(buffer));
-        Application.setState(responseBody.data.access_token, "accessToken");
-        Application.setState(responseBody.data.refresh_token, "refreshToken");
-        Application.setState(responseBody.data.expires_at, "tokenExpiration");
+    let url = "https://api.asurascans.com/api/auth/refresh";
+    const [res, buffer] = await Application.scheduleRequest({
+        url,
+        method: "POST",
+        body: JSON.stringify({ refresh_token: Application.getState("refreshToken") }),
+    });
+    if (res.status !== 200) {
+        throw new Error("Access token expired. Please sign in again.");
     }
+    const responseBody = JSON.parse(Application.arrayBufferToUTF8String(buffer));
+    Application.setState(responseBody.data.access_token, "accessToken");
+    Application.setState(responseBody.data.refresh_token, "refreshToken");
+    Application.setState(responseBody.data.expires_at, "tokenExpiration");
+
     return Application.getState("accessToken") as string;
 }
 
 export class AsuraSettingForm extends Form {
     override getSections() {
+        let sections: ListSectionElement[] = [];
+
+        if (
+            Application.getState("user") &&
+            Application.getState("accessToken") &&
+            new Date() < new Date(Application.getState("tokenExpiration") as string)
+        ) {
+            let user = Application.getState("user") as AsuraUser;
+            sections.push(this.getUserSection(user));
+        } else {
+            sections.push(this.getSignInSection());
+        }
+
+        console.log(Application.getState("tokenExpiration") as string);
         return [
-            Section("first", [
-                InputRow("username", {
-                    title: "Username",
-                    value: (Application.getState("username") as string) ?? "",
-                    onValueChange: Application.Selector(this as AsuraSettingForm, "saveUsername"),
-                }),
-                InputRow("password", {
-                    title: "Password",
-                    value: (Application.getState("password") as string) ?? "",
-                    isSecureEntry: true,
-                    onValueChange: Application.Selector(this as AsuraSettingForm, "savePassword"),
-                }),
+            ...sections,
+            Section("second", [
                 ToggleRow("pre", {
                     title: "Show Upcoming Chapters",
                     value: getShowUpcomingChapters(),
                     onValueChange: Application.Selector(this as AsuraSettingForm, "preChange"),
                 }),
-            ]),
-            Section("second", [
                 ButtonRow("clearTags", {
                     title: "Clear Cached Search Tags",
                     onSelect: Application.Selector(this as AsuraSettingForm, "tagsChange"),
                 }),
             ]),
         ];
+    }
+
+    getUserSection(user: AsuraUser): ListSectionElement {
+        let section: ListSectionElement = Section("user", []);
+
+        section.items.push(
+            LabelRow("username", {
+                title: "Username",
+                value: user?.username ?? "Not Signed In",
+                subtitle: user.id.toString(),
+            }),
+        );
+
+        if (user.description != "") {
+            section.items.push(
+                LabelRow("description", {
+                    title: "Description",
+                    value: user?.description ?? "No Description",
+                }),
+            );
+        }
+
+        return section;
+    }
+
+    getSignInSection(): ListSectionElement {
+        return Section("signIn", [
+            InputRow("username", {
+                title: "Username",
+                value: (Application.getState("username") as string) ?? "",
+                onValueChange: Application.Selector(this as AsuraSettingForm, "saveUsername"),
+            }),
+            InputRow("password", {
+                title: "Password",
+                value: (Application.getState("password") as string) ?? "",
+                isSecureEntry: true,
+                onValueChange: Application.Selector(this as AsuraSettingForm, "savePassword"),
+            }),
+        ]);
     }
 
     async hQthumbChange(value: boolean): Promise<void> {
@@ -115,8 +165,11 @@ export class AsuraSettingForm extends Form {
             body: `{"email":"${Application.getState("username") as string}","password":"${password as string}"}`,
         });
         const responseBody = JSON.parse(Application.arrayBufferToUTF8String(buffer));
+        Application.setState(responseBody.data.user, "user");
         Application.setState(responseBody.data.access_token, "accessToken");
         Application.setState(responseBody.data.refresh_token, "refreshToken");
         Application.setState(responseBody.data.expires_at, "tokenExpiration");
+
+        this.reloadForm();
     }
 }

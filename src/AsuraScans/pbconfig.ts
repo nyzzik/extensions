@@ -3,7 +3,7 @@ import { ContentRating, SourceIntents, type ExtensionInfo } from "@paperback/typ
 export default {
     name: "Asura Scans",
     description: "Extension that pulls content from asurascans.com.",
-    version: "1.0.0",
+    version: "1.1.0",
     icon: "icon.png",
     language: "en",
     contentRating: ContentRating.EVERYONE,
@@ -12,6 +12,7 @@ export default {
         SourceIntents.DISCOVER_SECTION_PROVIDING,
         SourceIntents.SETTINGS_FORM_PROVIDING,
         SourceIntents.SEARCH_RESULT_PROVIDING,
+        SourceIntents.PROGRESS_PROVIDING,
     ],
     badges: [],
     developers: [

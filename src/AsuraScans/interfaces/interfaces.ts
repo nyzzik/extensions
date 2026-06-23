@@ -117,3 +117,46 @@ export enum TagSectionId {
     SeriesStatus = "status",
     SeriesType = "type",
 }
+
+export interface AsuraUser {
+    id: number;
+    email: string;
+    email_verified_at: string;
+    username: string;
+    role: string;
+    description: string;
+    premium_until: string;
+    comment_banned: boolean;
+    has_custom_username: boolean;
+    streak_days: number;
+    has_password: boolean;
+    created_at: string;
+}
+
+export interface AsuraBookmarkResponse {
+    data: AsuraBookmark[];
+    meta: {
+        total: number;
+    };
+}
+
+export interface AsuraBookmark {
+    created_at: string;
+    id: number;
+    last_read_at: string;
+    last_read_chapter: number;
+    next_chapter?: number;
+    series: AsuraBookmarkSeries;
+    status: string;
+}
+
+export interface AsuraBookmarkSeries {
+    chapter_count: number;
+    cover_url: string;
+    id: number;
+    latest_chapter: number;
+    slug: string;
+    status: string;
+    title: string;
+    type: string;
+}
