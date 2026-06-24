@@ -160,3 +160,12 @@ export interface AsuraBookmarkSeries {
     title: string;
     type: string;
 }
+
+export const readingStatuses = [
+    { id: "reading", name: "Reading" },
+    { id: "completed", name: "Completed" },
+    { id: "on_hold", name: "On Hold" },
+    { id: "dropped", name: "Dropped" },
+    { id: "plan_to_read", name: "Plan to Read" },
+] as const;
+export type AsuraScansReadingStatus = (typeof readingStatuses)[number]["id"];

@@ -46,12 +46,13 @@ import { AsuraSettingForm, getAccessToken, getShowUpcomingChapters } from "./for
 import { statuses, types } from "./filters";
 import { AsuraScansAdvancedSearchForm } from "./forms";
 import AsuraConfig from "./pbconfig";
+import { TrackingForm } from "./forms/tracking";
 
 // Application.global_setTimeout = Application.setTimeout;
 
 export class AsuraScansExtension implements ExtensionImpl<typeof AsuraConfig> {
-    getMangaProgressManagementForm(sourceManga: SourceManga): Promise<Form> {
-        throw new Error("Method not implemented.");
+    async getMangaProgressManagementForm(sourceManga: SourceManga): Promise<Form> {
+        return new TrackingForm(sourceManga);
     }
     async getMangaProgress(sourceManga: SourceManga): Promise<MangaProgress> {
         let request: Request = {

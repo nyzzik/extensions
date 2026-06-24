@@ -3,7 +3,7 @@ import { ContentRating, SourceIntents, type ExtensionInfo } from "@paperback/typ
 export default {
     name: "Asura Scans",
     description: "Extension that pulls content from asurascans.com.",
-    version: "1.1.2",
+    version: "1.1.3",
     icon: "icon.png",
     language: "en",
     contentRating: ContentRating.EVERYONE,
