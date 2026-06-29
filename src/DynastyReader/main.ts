@@ -65,9 +65,9 @@ export class DynastyReaderExtension
         const status = response.tags.find((x) => x.type == "Status");
 
         const description = response?.description?.replace(/<[^>]*>?/gm, "").trim() ?? "";
-        let name = "";
+        let name = response.name;
         if (response.type === "Doujin") {
-            name = response.name + " " + response.type;
+            name += " " + response.type;
         }
 
         return {
