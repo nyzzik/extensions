@@ -42,10 +42,10 @@ export class MALSettingsForm extends Form {
             return [Section("loading", [LabelRow("loading", { title: "Loading..." })])];
         }
 
-        if (Application.getState("malAccessToken") && Application.getState("malRefreshToken")) {
+        if (Application.getState("malAccessToken") && Application.getState("malRefreshToken") && this.userInfo != undefined) {
             sections.push(
-                this.getProfileSections(this.userInfo!),
-                this.getMangaStatsSection(this.userInfo!),
+                this.getProfileSections(this.userInfo),
+                this.getMangaStatsSection(this.userInfo),
             );
         } else {
             sections.push(this.getLoginSection());
@@ -87,7 +87,7 @@ export class MALSettingsForm extends Form {
             LabelRow("username-id", {
                 title: "Username",
                 value: info.name,
-                subtitle: info.id.toString(),
+                subtitle: info.id.toString() ?? "N/A",
             }),
             ButtonRow("logout", {
                 title: "Log Out",
