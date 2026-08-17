@@ -463,7 +463,7 @@ export class AsuraScansExtension implements ExtensionImpl<typeof AsuraConfig> {
         let chapters: Chapter[] = [];
 
         for (const chapter of chapterData.data) {
-            if (!getShowUpcomingChapters() && chapter.is_locked) continue;
+            if (!getShowUpcomingChapters() && chapter.is_premium) continue;
             chapters.push({
                 sourceManga,
                 chapterId: chapter.id.toString(),
@@ -471,7 +471,7 @@ export class AsuraScansExtension implements ExtensionImpl<typeof AsuraConfig> {
                 chapNum: chapter.number,
                 title: chapter?.title ?? undefined,
                 publishDate: new Date(chapter.early_access_until ?? chapter.published_at),
-                additionalInfo: chapter.is_locked ? { early_access: "true" } : undefined,
+                additionalInfo: chapter.is_premium ? { early_access: "true" } : undefined,
                 sortingIndex: chapter.number,
                 volume: 0,
             });
