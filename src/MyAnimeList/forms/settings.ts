@@ -42,7 +42,11 @@ export class MALSettingsForm extends Form {
             return [Section("loading", [LabelRow("loading", { title: "Loading..." })])];
         }
 
-        if (Application.getState("malAccessToken") && Application.getState("malRefreshToken") && this.userInfo != undefined) {
+        if (
+            Application.getState("malAccessToken") &&
+            Application.getState("malRefreshToken") &&
+            this.userInfo != undefined
+        ) {
             sections.push(
                 this.getProfileSections(this.userInfo),
                 this.getMangaStatsSection(this.userInfo),

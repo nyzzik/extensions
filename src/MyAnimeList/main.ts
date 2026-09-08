@@ -204,7 +204,7 @@ export class MyAnimeListExtension
         const response = JSON.parse(
             Application.arrayBufferToUTF8String(buffer),
         ) as MyAnimeListMangaListResponse;
-        metadata.next = response.paging.next;
+        metadata.next = response.paging.next ?? "";
         for (const item of response.data) {
             items.push({
                 mangaId: item.node.id.toString(),
