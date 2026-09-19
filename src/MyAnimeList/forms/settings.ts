@@ -87,11 +87,14 @@ export class MALSettingsForm extends Form {
     }
 
     getProfileSections(info: MyAnimeListUserStatistics): ListSectionElement {
+        if (info == undefined) {
+            console.log(info);
+        }
         return Section({ id: "profile-data", header: "Profile:" }, [
             LabelRow("username-id", {
                 title: "Username",
                 value: info.name,
-                subtitle: info.id.toString() ?? "N/A",
+                subtitle: info?.id?.toString() ?? "N/A",
             }),
             ButtonRow("logout", {
                 title: "Log Out",
@@ -143,6 +146,10 @@ export class MALSettingsForm extends Form {
 
         Application.scheduleRequest(request)
             .then((res) => {
+                if (res[0].status === 401) {
+                    this.refreshAccessToken();
+                    return;
+                }
                 const response = JSON.parse(
                     Application.arrayBufferToUTF8String(res[1]),
                 ) as MyAnimeListUserStatistics;
@@ -152,6 +159,33 @@ export class MALSettingsForm extends Form {
                 this.error = err;
             })
             .finally(() => {
+                this.reloadForm();
+            });
+    }
+
+    async refreshAccessToken(): Promise<void> {
+        const url = "https://myanimelist.net/v1/oauth2/token";
+        const request = {
+            url,
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+            data: `grant_type=refresh_token&refresh_token=${Application.getState(
+                "malRefreshToken",
+            )}&client_id=5a7227c9c7bc0f28fe4372d791f5971f`,
+        };
+
+        Application.scheduleRequest(request)
+            .then((res) => {
+                const response = JSON.parse(Application.arrayBufferToUTF8String(res[1])) as {
+                    access_token: string;
+                    refresh_token: string;
+                };
+                this.handleLoginSuccess(response.access_token, response.refresh_token);
+            })
+            .catch((err) => {
+                this.error = err;
                 this.reloadForm();
             });
     }

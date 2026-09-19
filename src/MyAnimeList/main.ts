@@ -172,7 +172,7 @@ export class MyAnimeListExtension
     }
     async getSearchResults(
         query: SearchQuery<Metadata>,
-        metadata: MyAnimeListMetadata,
+        metadata: MyAnimeListMetadata | undefined,
         _sortingOption: SortingOption | undefined,
     ): Promise<PagedResults<SearchResultItem>> {
         let urlBuilder;
@@ -204,7 +204,10 @@ export class MyAnimeListExtension
         const response = JSON.parse(
             Application.arrayBufferToUTF8String(buffer),
         ) as MyAnimeListMangaListResponse;
-        metadata.next = response.paging.next ?? "";
+        metadata.next = response.paging.next ?? undefined;
+        if (metadata.next == undefined) {
+            metadata = undefined;
+        }
         for (const item of response.data) {
             items.push({
                 mangaId: item.node.id.toString(),
