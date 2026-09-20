@@ -22,6 +22,7 @@ export interface StatusTypes {
     DROPPED: string;
     SEASONEND: string;
     COMINGSOON: string;
+    AXED: string;
 }
 
 export interface AsuraMetadata extends JSONObject {

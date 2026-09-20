@@ -6,6 +6,7 @@ export const statuses: Tag[] = [
     { title: "Hiatus", id: "hiatus" },
     { title: "Completed", id: "completed" },
     { title: "Dropped", id: "dropped" },
+    { title: "Axed", id: "axed" },
 ];
 export const types: Tag[] = [
     { title: "All", id: "all" },

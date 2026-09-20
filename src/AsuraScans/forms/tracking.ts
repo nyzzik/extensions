@@ -111,8 +111,6 @@ export class TrackingForm extends Form {
             last_read_chapter: this.asuraTitle.last_read_chapter ?? 0,
         };
 
-        console.log("DATA: " + JSON.stringify(data));
-
         const put: Request = {
             url: `https://api.asurascans.com/api/bookmarks/${this.sourceManga.mangaInfo.additionalInfo?.id}`,
             method: "PUT",
