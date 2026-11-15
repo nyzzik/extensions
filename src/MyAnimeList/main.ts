@@ -169,6 +169,17 @@ export class MyAnimeListExtension
                 artworkUrls: response.pictures.map((p) => p.medium),
                 extras: [
                     {
+                        id: "related",
+                        title: "Related Manga",
+                        items: response.related_manga.map((item) => ({
+                            id: item.node.id.toString(),
+                            title: item.node.title,
+                            imageUrl: item.node.main_picture.medium,
+                            subtitle: item.relation_type_formatted,
+                        })),
+                        type: "relation",
+                    },
+                    {
                         id: "recommendations",
                         title: "Recommendations",
                         items: response.recommendations.map((item) => ({

@@ -66,7 +66,7 @@ interface MyAnimeListPicture {
 }
 
 interface MyAnimeListRelated {
-    node: unknown;
+    node: MyAnimeListManga;
     relation_type:
         | "sequel"
         | "prequel"
@@ -80,14 +80,7 @@ interface MyAnimeListRelated {
 }
 
 interface MyAnimeListRecommendation {
-    node: {
-        id: number;
-        title: string;
-        main_picture: {
-            medium: string;
-            large: string;
-        };
-    };
+    node: MyAnimeListManga;
     num_recommendations: number;
 }
 
