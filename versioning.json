@@ -1,5 +1,5 @@
 {
-  "buildTime": "2026-11-15T00:41:11.106Z",
+  "buildTime": "2026-11-15T05:43:47.696Z",
   "builtWith": {
     "toolchain": "1.0.0-alpha.95",
     "types": "1.0.0-alpha.95"
@@ -57,7 +57,7 @@
     {
       "name": "MyAnimeList",
       "description": "Extension that pulls content from myanimelist.net.",
-      "version": "1.0.8",
+      "version": "1.1.0",
       "icon": "icon.png",
       "language": "en",
       "contentRating": "SAFE",
