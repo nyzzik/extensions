@@ -26,6 +26,7 @@ import {
     type TrackedMangaChapterReadAction,
     type ExtensionImpl,
     type Request,
+    type MangaInfoRelationSection,
 } from "@paperback/types";
 import { URLBuilder } from "../utils/url-builder/array-query-variant";
 import { AS_API_DOMAIN, AS_DOMAIN } from "./config";
@@ -55,6 +56,9 @@ export class AsuraScansExtension implements ExtensionImpl<typeof AsuraConfig> {
         return new TrackingForm(sourceManga);
     }
     async getMangaProgress(sourceManga: SourceManga): Promise<MangaProgress> {
+        if (!Application.getState("user")) {
+            throw new Error("You are not signed in, tracking will not work.");
+        }
         let request: Request = {
             url: new URLBuilder(AS_API_DOMAIN)
                 .addPath("api")
@@ -413,8 +417,10 @@ export class AsuraScansExtension implements ExtensionImpl<typeof AsuraConfig> {
 
         const json = JSON.parse(Application.arrayBufferToUTF8String(buffer)) as {
             series: AsuraManga;
+            recommended_series: AsuraManga[];
         };
         // return await parseMangaDetails($, mangaId);
+
         return {
             mangaId: mangaId,
             mangaInfo: {
@@ -440,6 +446,18 @@ export class AsuraScansExtension implements ExtensionImpl<typeof AsuraConfig> {
                 additionalInfo: {
                     id: json.series.id.toString(),
                 },
+                extras: [
+                    {
+                        id: "recommended",
+                        title: "Recommended Series",
+                        items: json.recommended_series.map((item) => ({
+                            id: item.slug,
+                            title: item.title,
+                            imageUrl: item.cover_url ?? item.cover,
+                        })),
+                        type: "relation",
+                    },
+                ],
             },
         };
     }
