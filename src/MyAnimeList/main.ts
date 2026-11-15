@@ -167,6 +167,18 @@ export class MyAnimeListExtension
                 status: response.status,
                 rating: (response.mean ?? 0) / 10,
                 artworkUrls: response.pictures.map((p) => p.medium),
+                extras: [
+                    {
+                        id: "recommendations",
+                        title: "Recommendations",
+                        items: response.recommendations.map((item) => ({
+                            id: item.node.id.toString(),
+                            title: item.node.title,
+                            imageUrl: item.node.main_picture.medium,
+                        })),
+                        type: "relation",
+                    },
+                ],
             },
         };
     }

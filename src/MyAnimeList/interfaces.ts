@@ -80,7 +80,14 @@ interface MyAnimeListRelated {
 }
 
 interface MyAnimeListRecommendation {
-    node: unknown;
+    node: {
+        id: number;
+        title: string;
+        main_picture: {
+            medium: string;
+            large: string;
+        };
+    };
     num_recommendations: number;
 }
 
