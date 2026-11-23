@@ -32,6 +32,7 @@ import { URLBuilder } from "../utils/url-builder/array-query-variant";
 import { AS_API_DOMAIN, AS_DOMAIN } from "./config";
 import { AsuraInterceptor } from "./interceptor";
 import {
+    type AsuraApiResponse,
     type AsuraBookmarkResponse,
     type AsuraChapterResponse,
     type AsuraCreatorRequest,
@@ -39,6 +40,7 @@ import {
     type AsuraManga,
     type AsuraMetadata,
     type AsuraSearchResult,
+    type AsuraSeriesPayload,
     type PageData,
     type SearchMetadata,
     TagSectionId,
@@ -106,6 +108,7 @@ export class AsuraScansExtension implements ExtensionImpl<typeof AsuraConfig> {
         };
 
         if (!Application.getState("user")) {
+            trackedReadActions.successfulItems.push(...actions.map((e) => e.id));
             return trackedReadActions;
         }
         const highestChapters: Map<string, number> = new Map();
@@ -294,7 +297,7 @@ export class AsuraScansExtension implements ExtensionImpl<typeof AsuraConfig> {
                         imageUrl: manga.cover,
                         title: manga.title,
                         mangaId: manga.slug,
-                        subtitle: `Chapter ${manga.latest_chapters[0].number.toString()}${new Date(manga.latest_chapters[0].early_access_until ?? "") > new Date() ? " - (Early Access)" : ""}`,
+                        subtitle: `Chapter ${manga.latest_chapters[0].number.toString() ?? "?"}${new Date(manga.latest_chapters[0].early_access_until ?? "") > new Date() ? " - (Early Access)" : ""}`,
                         type: "simpleCarouselItem",
                         contentRating: AsuraConfig.contentRating,
                     });
@@ -327,8 +330,8 @@ export class AsuraScansExtension implements ExtensionImpl<typeof AsuraConfig> {
                         imageUrl: manga.cover,
                         title: manga.title,
                         mangaId: manga.slug,
-                        subtitle: `Chapter ${manga.latest_chapters[0].number.toString()}${new Date(manga.latest_chapters[0].early_access_until ?? "") > new Date() ? " - (Early Access)" : ""}`,
-                        chapterId: manga.latest_chapters[0].id.toString(),
+                        subtitle: `Chapter ${manga.latest_chapters[0].number.toString() ?? "?"}${new Date(manga.latest_chapters[0].early_access_until ?? "") > new Date() ? " - (Early Access)" : ""}`,
+                        chapterId: manga.latest_chapters[0].id.toString() ?? 0,
                         type: "chapterUpdatesCarouselItem",
                         contentRating: AsuraConfig.contentRating,
                     });
@@ -415,42 +418,41 @@ export class AsuraScansExtension implements ExtensionImpl<typeof AsuraConfig> {
 
         const [_, buffer] = await Application.scheduleRequest(request);
 
-        const json = JSON.parse(Application.arrayBufferToUTF8String(buffer)) as {
-            series: AsuraManga;
-            recommended_series: AsuraManga[];
-        };
+        const json = JSON.parse(Application.arrayBufferToUTF8String(buffer)) as AsuraApiResponse;
         // return await parseMangaDetails($, mangaId);
+        const { series, recommended_series }: AsuraSeriesPayload =
+            "data" in json && json.data ? json.data : (json as AsuraSeriesPayload);
 
         return {
             mangaId: mangaId,
             mangaInfo: {
-                primaryTitle: json.series.title,
-                secondaryTitles: json.series.alt_titles,
-                status: json.series.status,
-                author: json.series.author === "_" ? undefined : json.series.author,
-                artist: json.series.artist === "_" ? undefined : json.series.artist,
+                primaryTitle: series.title,
+                secondaryTitles: series.alt_titles,
+                status: series.status,
+                author: series.author === "_" ? undefined : series.author,
+                artist: series.artist === "_" ? undefined : series.artist,
                 tagGroups: [
                     {
                         id: "0",
                         title: "Genres",
-                        tags: json.series.genres.map((genre) => ({
+                        tags: series.genres.map((genre) => ({
                             id: genre.slug,
                             title: genre.name,
                         })),
                     },
                 ],
-                synopsis: json.series.description.replaceAll("<p>", "").replaceAll("</p>", "\n"),
-                thumbnailUrl: json.series.cover_url ?? json.series.cover,
+                synopsis: series.description.replaceAll("<p>", "").replaceAll("</p>", "\n"),
+                thumbnailUrl: series.cover_url ?? series.cover,
                 contentRating: AsuraConfig.contentRating,
                 shareUrl: new URLBuilder(AS_DOMAIN).addPath("comics").addPath(mangaId).build(),
                 additionalInfo: {
-                    id: json.series.id.toString(),
+                    id: series.id.toString(),
                 },
                 extras: [
                     {
                         id: "recommended",
                         title: "Recommended Series",
-                        items: json.recommended_series.map((item) => ({
+                        items: recommended_series.map((item) => ({
                             id: item.slug,
                             title: item.title,
                             imageUrl: item.cover_url ?? item.cover,
@@ -749,11 +751,24 @@ export class AsuraScansExtension implements ExtensionImpl<typeof AsuraConfig> {
         let items: SearchResultItem[] = [];
 
         for (const manga of json.data) {
+            const latestChapter = manga?.latest_chapters?.[0];
+            const chapterNumber =
+                latestChapter?.number != null ? String(latestChapter.number) : "?";
+
+            const earlyAccessDate = latestChapter?.early_access_until
+                ? new Date(latestChapter.early_access_until)
+                : null;
+
+            const isEarlyAccess =
+                earlyAccessDate !== null &&
+                !Number.isNaN(earlyAccessDate.getTime()) &&
+                earlyAccessDate > new Date();
+
             items.push({
                 imageUrl: manga.cover_url ?? manga.cover,
                 title: manga.title,
                 mangaId: manga.slug,
-                subtitle: `Chapter ${manga.latest_chapters[0].number.toString()}${new Date(manga.latest_chapters[0].early_access_until ?? "") > new Date() ? " - (Early Access)" : ""}`,
+                subtitle: `Chapter ${chapterNumber}${isEarlyAccess ? " - (Early Access)" : ""}`,
                 contentRating: AsuraConfig.contentRating,
             });
         }

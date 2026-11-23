@@ -70,6 +70,13 @@ export interface AsuraSearchResult {
     meta: AsuraMetadata;
 }
 
+export type AsuraApiResponse = AsuraSeriesPayload | { data: AsuraSeriesPayload };
+
+export interface AsuraSeriesPayload {
+    series: AsuraManga;
+    recommended_series: AsuraManga[];
+}
+
 export interface AsuraManga {
     id: number;
     slug: string;
