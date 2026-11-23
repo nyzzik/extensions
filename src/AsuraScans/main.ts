@@ -293,11 +293,24 @@ export class AsuraScansExtension implements ExtensionImpl<typeof AsuraConfig> {
                 );
 
                 for (const manga of json.data) {
+                    const latestChapter = manga?.latest_chapters?.[0];
+                    const chapterNumber =
+                        latestChapter?.number != null ? String(latestChapter.number) : "?";
+
+                    const earlyAccessDate = latestChapter?.early_access_until
+                        ? new Date(latestChapter.early_access_until)
+                        : null;
+
+                    const isEarlyAccess =
+                        earlyAccessDate !== null &&
+                        !Number.isNaN(earlyAccessDate.getTime()) &&
+                        earlyAccessDate > new Date();
+
                     items.push({
                         imageUrl: manga.cover,
                         title: manga.title,
                         mangaId: manga.slug,
-                        subtitle: `Chapter ${manga.latest_chapters[0].number.toString() ?? "?"}${new Date(manga.latest_chapters[0].early_access_until ?? "") > new Date() ? " - (Early Access)" : ""}`,
+                        subtitle: `Chapter ${chapterNumber}${isEarlyAccess ? " - (Early Access)" : ""}`,
                         type: "simpleCarouselItem",
                         contentRating: AsuraConfig.contentRating,
                     });
@@ -326,11 +339,24 @@ export class AsuraScansExtension implements ExtensionImpl<typeof AsuraConfig> {
                 // metadata = !isLastPage($) ? { page: page + 1 } : undefined;
 
                 for (const manga of json.data) {
+                    const latestChapter = manga?.latest_chapters?.[0];
+                    const chapterNumber =
+                        latestChapter?.number != null ? String(latestChapter.number) : "?";
+
+                    const earlyAccessDate = latestChapter?.early_access_until
+                        ? new Date(latestChapter.early_access_until)
+                        : null;
+
+                    const isEarlyAccess =
+                        earlyAccessDate !== null &&
+                        !Number.isNaN(earlyAccessDate.getTime()) &&
+                        earlyAccessDate > new Date();
+
                     items.push({
                         imageUrl: manga.cover,
                         title: manga.title,
                         mangaId: manga.slug,
-                        subtitle: `Chapter ${manga.latest_chapters[0].number.toString() ?? "?"}${new Date(manga.latest_chapters[0].early_access_until ?? "") > new Date() ? " - (Early Access)" : ""}`,
+                        subtitle: `Chapter ${chapterNumber}${isEarlyAccess ? " - (Early Access)" : ""}`,
                         chapterId: manga.latest_chapters[0].id.toString() ?? 0,
                         type: "chapterUpdatesCarouselItem",
                         contentRating: AsuraConfig.contentRating,
