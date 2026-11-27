@@ -8,8 +8,9 @@ import {
     type TagSection,
     ToggleRow,
 } from "@paperback/types";
-import { type SearchMetadata, TagSectionId } from "./interfaces/interfaces";
-import { getTagFromTagStore } from "./utilities";
+import { type SearchMetadata, TagSectionId } from "../interfaces/interfaces";
+import { getTagFromTagStore } from "../utilities";
+import { getShowNovels } from "./settings";
 
 export class AsuraScansAdvancedSearchForm extends AdvancedSearchForm {
     private readonly searchMetadata: SearchMetadata;
@@ -27,6 +28,7 @@ export class AsuraScansAdvancedSearchForm extends AdvancedSearchForm {
 
     getSections(): FormSectionElement<unknown>[] {
         return [
+            Section("novels", this.getNovelFilter()),
             Section("genres", this.getGenresFilter(this.tags)),
             Section("seriesStatus", this.getSeriesStatusFilter(this.tags)),
             Section("seriesType", this.getSeriesTypesFilter(this.tags)),
@@ -112,6 +114,24 @@ export class AsuraScansAdvancedSearchForm extends AdvancedSearchForm {
                 ),
             }),
         ];
+    }
+
+    getNovelFilter(): FormItemElement<unknown>[] {
+        return [
+            ToggleRow("novel", {
+                title: "Show Novel Results",
+                subtitle: "Switches search to only show Novel results",
+                value: getShowNovels() && (this.searchMetadata.showNovels ?? false),
+                onValueChange: Application.Selector(
+                    this as AsuraScansAdvancedSearchForm,
+                    "handleNovelChange",
+                ),
+            }),
+        ];
+    }
+
+    async handleNovelChange(value: boolean): Promise<void> {
+        this.searchMetadata.showNovels = value;
     }
 
     async handleOrderChange(value: boolean): Promise<void> {

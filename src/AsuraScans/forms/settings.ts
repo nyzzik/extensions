@@ -34,6 +34,14 @@ export function clearTags(): void {
     Application.setState(undefined, "tags");
 }
 
+export function setShowNovels(value: boolean): void {
+    Application.setState(value.toString(), "novels");
+}
+
+export function getShowNovels(): boolean {
+    return toBoolean(Application.getState("novels"));
+}
+
 export async function getAccessToken(): Promise<string> {
     if (Application.getState("accessToken")) {
         let url = "https://api.asurascans.com/api/auth/refresh";
@@ -68,9 +76,10 @@ export class AsuraSettingForm extends Form {
             sections.push(this.getSignInSection());
         }
 
-        console.log(Application.getState("tokenExpiration") as string);
+        // console.log(Application.getState("tokenExpiration") as string);
         return [
             ...sections,
+            this.GetNovelSection(),
             Section("second", [
                 ToggleRow("pre", {
                     title: "Show Upcoming Chapters",
@@ -86,7 +95,7 @@ export class AsuraSettingForm extends Form {
     }
 
     getUserSection(user: AsuraUser): ListSectionElement {
-        let section: ListSectionElement = Section("user", []);
+        let section: ListSectionElement = Section({ id: "user", header: "User Info" }, []);
 
         section.items.push(
             LabelRow("username", {
@@ -106,6 +115,22 @@ export class AsuraSettingForm extends Form {
         }
 
         return section;
+    }
+
+    GetNovelSection(): ListSectionElement {
+        return Section(
+            {
+                id: "novels",
+                header: "Novel Settings",
+            },
+            [
+                ToggleRow("show", {
+                    title: "Show Novels",
+                    value: getShowNovels(),
+                    onValueChange: Application.Selector(this as AsuraSettingForm, "novelChange"),
+                }),
+            ],
+        );
     }
 
     getSignInSection(): ListSectionElement {
@@ -130,6 +155,10 @@ export class AsuraSettingForm extends Form {
 
     async preChange(value: boolean): Promise<void> {
         setShowUpcomingChapters(value);
+    }
+
+    async novelChange(value: boolean): Promise<void> {
+        setShowNovels(value);
     }
 
     async tagsChange(): Promise<void> {

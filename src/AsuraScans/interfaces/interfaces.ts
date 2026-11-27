@@ -75,6 +75,7 @@ export type AsuraApiResponse = AsuraSeriesPayload | { data: AsuraSeriesPayload }
 export interface AsuraSeriesPayload {
     series: AsuraManga;
     recommended_series: AsuraManga[];
+    linked_novel?: AsuraLinkedNovel;
 }
 
 export interface AsuraManga {
@@ -100,6 +101,7 @@ export interface AsuraManga {
     source_url: string;
     genres: AsuraGenre[];
     latest_chapters: AsuraChapter[];
+    recent_chapters?: AsuraNovelChapter[];
 }
 
 export interface AsuraGenre {
@@ -118,6 +120,7 @@ export interface SearchMetadata extends JSONObject {
     seriesStatus?: string[];
     seriesType?: string[];
     orderIsDescending?: boolean;
+    showNovels?: boolean;
 }
 
 export enum TagSectionId {
@@ -167,6 +170,66 @@ export interface AsuraBookmarkSeries {
     status: string;
     title: string;
     type: string;
+}
+
+export interface AsuraLinkedNovel {
+    id: number;
+    title: string;
+    slug: string;
+    cover_url: string;
+    chapter_count: number;
+    status: string;
+}
+
+export interface AsuraNovelResponse {
+    chapters: AsuraNovelChapter[];
+    next_chapter: AsuraNovelUpcomingChapter;
+    series: AsuraNovelSeries;
+    upcoming_chapters: AsuraNovelUpcomingChapter[];
+}
+
+export interface AsuraNovelChapter {
+    id: number;
+    number: number;
+    title: string;
+    word_count: number;
+    early_access_hours: number;
+    published_at: string;
+    is_locked: boolean;
+    view_count: number;
+    paid_view_count: number;
+    content_html?: string;
+}
+
+export interface AsuraNovelUpcomingChapter {
+    number: number;
+    scheduled_at: string;
+}
+
+export interface AsuraNovelSeries {
+    id: number;
+    series_id: number;
+    author_id: number;
+    slug: string;
+    title: string;
+    alternative_titles: string;
+    description: string;
+    cover_url: string;
+    banner_url: string;
+    status: string;
+    author: string;
+    genres: string[];
+    genre_ids: number[];
+    chapter_count: number;
+    first_chapter?: undefined;
+    is_pinned: boolean;
+    rating: number;
+    rating_count: number;
+    bookmarks: number;
+    page_view_count: number;
+    paid_view_count: number;
+    last_chapter_at: string;
+    release_schedule: string;
 }
 
 export const readingStatuses = [

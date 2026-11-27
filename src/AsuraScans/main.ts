@@ -2,31 +2,24 @@ import {
     BasicRateLimiter,
     type Chapter,
     type ChapterDetails,
-    type ChapterProviding,
     type DiscoverSection,
     type DiscoverSectionItem,
-    type DiscoverSectionProviding,
     DiscoverSectionType,
-    type Extension,
     Form,
-    type MangaProviding,
     type PagedResults,
     type SearchQuery,
     type SearchResultItem,
-    type SearchResultsProviding,
-    type SettingsFormProviding,
     type SortingOption,
     type SourceManga,
     type Tag,
     type TagSection,
     AdvancedSearchForm,
-    type MangaProgressProviding,
     type ChapterReadActionQueueProcessingResult,
     type MangaProgress,
     type TrackedMangaChapterReadAction,
     type ExtensionImpl,
     type Request,
-    type MangaInfoRelationSection,
+    type MangaInfoExtra,
 } from "@paperback/types";
 import { URLBuilder } from "../utils/url-builder/array-query-variant";
 import { AS_API_DOMAIN, AS_DOMAIN } from "./config";
@@ -37,19 +30,29 @@ import {
     type AsuraChapterResponse,
     type AsuraCreatorRequest,
     type AsuraGenre,
-    type AsuraManga,
     type AsuraMetadata,
     type AsuraSearchResult,
     type AsuraSeriesPayload,
-    type PageData,
     type SearchMetadata,
     TagSectionId,
 } from "./interfaces/interfaces";
-import { AsuraSettingForm, getAccessToken, getShowUpcomingChapters } from "./forms/settings";
+import {
+    AsuraSettingForm,
+    getAccessToken,
+    getShowNovels,
+    getShowUpcomingChapters,
+} from "./forms/settings";
 import { statuses, types } from "./filters";
-import { AsuraScansAdvancedSearchForm } from "./forms";
+import { AsuraScansAdvancedSearchForm } from "./forms/search";
 import AsuraConfig from "./pbconfig";
 import { TrackingForm } from "./forms/tracking";
+import {
+    getNovelChapterDetails,
+    getNovelChapters,
+    getNovelDetails,
+    getNovelDiscoverSections,
+} from "./novel-helper";
+import { unscramble } from "./utilities";
 
 // Application.global_setTimeout = Application.setTimeout;
 
@@ -119,6 +122,9 @@ export class AsuraScansExtension implements ExtensionImpl<typeof AsuraConfig> {
         }
 
         for (const action of actions) {
+            if (action.sourceManga.mangaId.startsWith("novel-")) {
+                trackedReadActions.successfulItems.push(action.id);
+            }
             if (highestChapters.get(action.sourceManga.mangaId) != action.chapterNum) {
                 trackedReadActions.successfulItems.push(action.id);
                 continue;
@@ -213,7 +219,7 @@ export class AsuraScansExtension implements ExtensionImpl<typeof AsuraConfig> {
     }
 
     async getDiscoverSections(): Promise<DiscoverSection[]> {
-        return [
+        let sections = [
             {
                 id: "featured",
                 title: "Popular Today",
@@ -238,6 +244,10 @@ export class AsuraScansExtension implements ExtensionImpl<typeof AsuraConfig> {
 
             { id: "status", title: "Status", type: DiscoverSectionType.genres },
         ];
+        if (getShowNovels()) {
+            sections.push(...getNovelDiscoverSections());
+        }
+        return sections;
     }
 
     async getDiscoverSectionItems(
@@ -246,8 +256,8 @@ export class AsuraScansExtension implements ExtensionImpl<typeof AsuraConfig> {
     ): Promise<PagedResults<DiscoverSectionItem>> {
         let items: DiscoverSectionItem[] = [];
         const page: number = metadata?.page ?? 0;
-        switch (section.type) {
-            case DiscoverSectionType.featured: {
+        switch (section.id) {
+            case "featured": {
                 // https://api.asurascans.com/api/trending/daily?limit=10
                 let urlBuilder = new URLBuilder(AS_API_DOMAIN)
                     .addPath("api")
@@ -262,8 +272,6 @@ export class AsuraScansExtension implements ExtensionImpl<typeof AsuraConfig> {
                     Application.arrayBufferToUTF8String(buffer),
                 );
 
-                // console.log(json);
-
                 for (const manga of json.data) {
                     items.push({
                         imageUrl: manga.cover_url ?? "",
@@ -276,7 +284,7 @@ export class AsuraScansExtension implements ExtensionImpl<typeof AsuraConfig> {
                 metadata = undefined;
                 break;
             }
-            case DiscoverSectionType.simpleCarousel: {
+            case "popular_today": {
                 // Popular of all time. https://api.asurascans.com/api/series?sort=popular&order=desc&limit=20&offset=0
                 let urlBuilder = new URLBuilder(AS_API_DOMAIN)
                     .addPath("api")
@@ -310,7 +318,7 @@ export class AsuraScansExtension implements ExtensionImpl<typeof AsuraConfig> {
                         imageUrl: manga.cover,
                         title: manga.title,
                         mangaId: manga.slug,
-                        subtitle: `Chapter ${chapterNumber}${isEarlyAccess ? " - (Early Access)" : ""}`,
+                        subtitle: `Chapter ${chapterNumber}${isEarlyAccess ? " 🔒" : ""}`,
                         type: "simpleCarouselItem",
                         contentRating: AsuraConfig.contentRating,
                     });
@@ -321,7 +329,7 @@ export class AsuraScansExtension implements ExtensionImpl<typeof AsuraConfig> {
                     : undefined;
                 break;
             }
-            case DiscoverSectionType.chapterUpdates: {
+            case "latest_updates": {
                 let urlB = new URLBuilder(AS_API_DOMAIN)
                     .addPath("api")
                     .addPath("series")
@@ -356,7 +364,7 @@ export class AsuraScansExtension implements ExtensionImpl<typeof AsuraConfig> {
                         imageUrl: manga.cover,
                         title: manga.title,
                         mangaId: manga.slug,
-                        subtitle: `Chapter ${chapterNumber}${isEarlyAccess ? " - (Early Access)" : ""}`,
+                        subtitle: `Chapter ${chapterNumber}${isEarlyAccess ? " 🔒" : ""}`,
                         chapterId: manga.latest_chapters[0].id.toString() ?? 0,
                         type: "chapterUpdatesCarouselItem",
                         contentRating: AsuraConfig.contentRating,
@@ -368,7 +376,9 @@ export class AsuraScansExtension implements ExtensionImpl<typeof AsuraConfig> {
                     : undefined;
                 break;
             }
-            case DiscoverSectionType.genres:
+            case "genres":
+            case "type":
+            case "status":
                 if (section.id === "type") {
                     items = [];
                     const tags: TagSection[] = await this.getSearchTags();
@@ -420,6 +430,112 @@ export class AsuraScansExtension implements ExtensionImpl<typeof AsuraConfig> {
                         });
                     }
                 }
+                break;
+            case "novel_featured": {
+                // https://api.asurascans.com/api/novel-series?limit=3&sort=popular&period=week
+                let urlBuilder = new URLBuilder(AS_API_DOMAIN)
+                    .addPath("api")
+                    .addPath("novel-series")
+                    .addQuery("sort", "popular")
+                    .addQuery("period", "week")
+                    .addQuery("limit", "10");
+                const [_, buffer] = await Application.scheduleRequest({
+                    url: urlBuilder.build(),
+                    method: "GET",
+                });
+                const json: AsuraSearchResult = JSON.parse(
+                    Application.arrayBufferToUTF8String(buffer),
+                );
+
+                for (const manga of json.data) {
+                    items.push({
+                        imageUrl: manga.cover_url ?? "",
+                        title: manga.title,
+                        mangaId: "novel-" + manga.slug,
+                        type: "featuredCarouselItem",
+                        contentRating: AsuraConfig.contentRating,
+                    });
+                }
+                metadata = undefined;
+                break;
+            }
+            case "novel_latest_updates": {
+                let urlB = new URLBuilder(AS_API_DOMAIN)
+                    .addPath("api")
+                    .addPath("novel-series")
+                    .addQuery("sort", "latest")
+                    .addQuery("order", "desc")
+                    .addQuery("offset", page * (metadata?.per_page ?? 20));
+                const [_, buffer] = await Application.scheduleRequest({
+                    url: urlB.build(),
+                    method: "GET",
+                });
+                const json: AsuraSearchResult = JSON.parse(
+                    Application.arrayBufferToUTF8String(buffer),
+                );
+
+                for (const manga of json.data) {
+                    const latestChapter = manga?.recent_chapters?.[0];
+                    const chapterNumber =
+                        latestChapter?.number != null ? String(latestChapter.number) : "?";
+
+                    let chapId = "0";
+                    if (manga.recent_chapters) {
+                        chapId = manga.recent_chapters[0].id.toString() ?? 0;
+                    }
+
+                    items.push({
+                        imageUrl: manga.cover ?? manga.cover_url,
+                        title: manga.title,
+                        mangaId: "novel-" + manga.slug,
+                        subtitle: `Chapter ${chapterNumber}${latestChapter?.is_locked ? " 🔒" : ""}`,
+                        chapterId: chapId,
+                        type: "chapterUpdatesCarouselItem",
+                        contentRating: AsuraConfig.contentRating,
+                    });
+                }
+
+                metadata = json.meta.has_more
+                    ? { page: page + 1, per_page: json.meta.per_page }
+                    : undefined;
+                break;
+            }
+            case "novel_popular_today": {
+                // Popular of all time. https://api.asurascans.com/api/novel-series?limit=10&sort=popular
+                let urlBuilder = new URLBuilder(AS_API_DOMAIN)
+                    .addPath("api")
+                    .addPath("novel-series")
+                    .addQuery("sort", "popular")
+                    .addQuery("order", "desc")
+                    .addQuery("offset", page * (metadata?.per_page ?? 20));
+                const [_, buffer] = await Application.scheduleRequest({
+                    url: urlBuilder.build(),
+                    method: "GET",
+                });
+                const json: AsuraSearchResult = JSON.parse(
+                    Application.arrayBufferToUTF8String(buffer),
+                );
+
+                for (const manga of json.data) {
+                    const latestChapter = manga?.recent_chapters?.[0];
+                    const chapterNumber =
+                        latestChapter?.number != null ? String(latestChapter.number) : "?";
+
+                    items.push({
+                        imageUrl: manga.cover ?? manga.cover_url,
+                        title: manga.title,
+                        mangaId: "novel-" + manga.slug,
+                        subtitle: `Chapter ${chapterNumber}${latestChapter?.is_locked ? " 🔒" : ""}`,
+                        type: "simpleCarouselItem",
+                        contentRating: AsuraConfig.contentRating,
+                    });
+                }
+
+                metadata = json.meta.has_more
+                    ? { page: page + 1, per_page: json.meta.per_page }
+                    : undefined;
+                break;
+            }
         }
         return { items, metadata };
     }
@@ -433,6 +549,12 @@ export class AsuraScansExtension implements ExtensionImpl<typeof AsuraConfig> {
     }
 
     async getMangaDetails(mangaId: string): Promise<SourceManga> {
+        let isNovel = mangaId.startsWith("novel-");
+
+        if (isNovel) {
+            return getNovelDetails(mangaId);
+        }
+
         const request = {
             url: new URLBuilder(AS_API_DOMAIN)
                 .addPath("api")
@@ -445,9 +567,37 @@ export class AsuraScansExtension implements ExtensionImpl<typeof AsuraConfig> {
         const [_, buffer] = await Application.scheduleRequest(request);
 
         const json = JSON.parse(Application.arrayBufferToUTF8String(buffer)) as AsuraApiResponse;
-        // return await parseMangaDetails($, mangaId);
-        const { series, recommended_series }: AsuraSeriesPayload =
+        const { series, recommended_series, linked_novel }: AsuraSeriesPayload =
             "data" in json && json.data ? json.data : (json as AsuraSeriesPayload);
+
+        let extras: MangaInfoExtra[] = [];
+
+        if (linked_novel) {
+            extras.push({
+                id: "linked_novel",
+                title: "Linked Novel",
+                items: [
+                    {
+                        id: "novel-" + linked_novel.slug,
+                        title: linked_novel.title,
+                        imageUrl: linked_novel.cover_url,
+                    },
+                ],
+                type: "relation",
+            });
+        }
+        if (recommended_series) {
+            extras.push({
+                id: "recommended",
+                title: "Recommended Series",
+                items: recommended_series.map((item) => ({
+                    id: item.slug,
+                    title: item.title,
+                    imageUrl: item.cover_url ?? item.cover,
+                })),
+                type: "relation",
+            });
+        }
 
         return {
             mangaId: mangaId,
@@ -471,27 +621,21 @@ export class AsuraScansExtension implements ExtensionImpl<typeof AsuraConfig> {
                 thumbnailUrl: series.cover_url ?? series.cover,
                 contentRating: AsuraConfig.contentRating,
                 shareUrl: new URLBuilder(AS_DOMAIN).addPath("comics").addPath(mangaId).build(),
+                isWebtoon: true,
                 additionalInfo: {
                     id: series.id.toString(),
                 },
-                extras: [
-                    {
-                        id: "recommended",
-                        title: "Recommended Series",
-                        items: recommended_series.map((item) => ({
-                            id: item.slug,
-                            title: item.title,
-                            imageUrl: item.cover_url ?? item.cover,
-                        })),
-                        type: "relation",
-                    },
-                ],
+                extras,
             },
         };
     }
 
     async getChapters(sourceManga: SourceManga): Promise<Chapter[]> {
         // https://api.asurascans.com/api/series/dungeon-architect-f6174291/chapters
+        let isNovel = sourceManga.mangaId.startsWith("novel-");
+        if (isNovel) {
+            return getNovelChapters(sourceManga);
+        }
         const request = {
             url: new URLBuilder(AS_API_DOMAIN)
                 .addPath("api")
@@ -527,6 +671,17 @@ export class AsuraScansExtension implements ExtensionImpl<typeof AsuraConfig> {
     }
 
     async getChapterDetails(chapter: Chapter): Promise<ChapterDetails> {
+        let isNovel = chapter.sourceManga.mangaId.startsWith("novel-");
+
+        if (isNovel) {
+            // return {
+            //     id: chapter.chapterId,
+            //     mangaId: chapter.sourceManga.mangaId,
+            //     type: "html",
+            //     html: `<html xmlns="http://www.w3.org/1999/xhtml"><head></head><body><p>This is the first chapter</p></body></html>`,
+            // };
+            return getNovelChapterDetails(chapter);
+        }
         let accessToken: string = ((await getAccessToken()) as string) ?? "";
         if (chapter?.additionalInfo?.early_access && !accessToken) {
             throw new Error(
@@ -534,8 +689,9 @@ export class AsuraScansExtension implements ExtensionImpl<typeof AsuraConfig> {
             );
         }
         // https://api.asurascans.com/api/series/a-villains-will-to-survive-7f873ca6/chapters/49
+
         const request = {
-            url: `https://api.asurascans.com/api/series/${chapter.sourceManga.mangaId}/chapters/${chapter.chapNum}`,
+            url: `https://api.asurascans.com/api/${"series"}/${chapter.sourceManga.mangaId}/chapters/${chapter.chapNum}`,
             headers: {
                 // "Authorization": "Bearer " + accessToken,
                 Authorization: `Bearer ${accessToken}`,
@@ -560,7 +716,7 @@ export class AsuraScansExtension implements ExtensionImpl<typeof AsuraConfig> {
         const data = JSON.parse(json);
 
         let pages: string[] = [];
-        pages = await Promise.all(data.data.chapter.pages.map(this.unscramble));
+        pages = await Promise.all(data.data.chapter.pages.map(unscramble));
 
         const chapterDetails: ChapterDetails = {
             id: chapter.chapterId,
@@ -568,46 +724,6 @@ export class AsuraScansExtension implements ExtensionImpl<typeof AsuraConfig> {
             pages,
         };
         return chapterDetails;
-    }
-
-    async unscramble(this: void, data: PageData): Promise<string> {
-        const config = data;
-        if (!config.url || !config.tiles || !config.tile_cols || !config.tile_rows) {
-            return config.url;
-        }
-
-        const [res, buffer] = await Application.scheduleRequest({ url: config.url, method: "GET" });
-        let contentType = res.headers["Content-Type"];
-
-        let str: string = `data:${contentType};base64,${Application.base64Encode(buffer)}`;
-
-        return new Promise((res, reject) => {
-            const image = new Image();
-            // image.crossOrigin = "Anonymous";
-            image.onload = () => {
-                const canvas = new CanvasAPI(image.width, image.height);
-                const ctx = canvas.getContext("2d");
-
-                const tileW = image.width / config.tile_cols;
-                const tileH = image.height / config.tile_rows;
-
-                config.tiles.forEach((destIndex, sourceIndex) => {
-                    const sx = (sourceIndex % config.tile_cols) * tileW;
-                    const sy = Math.floor(sourceIndex / config.tile_cols) * tileH;
-
-                    const dx = (destIndex % config.tile_cols) * tileW;
-                    const dy = Math.floor(destIndex / config.tile_cols) * tileH;
-
-                    ctx.drawImage(image, sx, sy, tileW, tileH, dx, dy, tileW, tileH);
-                });
-                res(canvas.toDataURL());
-            };
-            image.onerror = () => {
-                reject(new Error("Failed to load image for unscrambling."));
-            };
-            image.src = str;
-        });
-        return "";
     }
 
     // TODO: Reimplement Search Tags with new Site Changes
@@ -727,7 +843,12 @@ export class AsuraScansExtension implements ExtensionImpl<typeof AsuraConfig> {
     ): Promise<PagedResults<SearchResultItem>> {
         const page: number = metadata?.page ?? 0;
         // https://api.asurascans.com/api/series?search=test&sort=latest&order=desc&limit=20&offset=0
-        let urlBuilder: URLBuilder = new URLBuilder(AS_API_DOMAIN).addPath("api").addPath("series");
+        let urlBuilder: URLBuilder;
+        if (query.metadata?.showNovels && getShowNovels()) {
+            urlBuilder = new URLBuilder(AS_API_DOMAIN).addPath("api").addPath("novel-series");
+        } else {
+            urlBuilder = new URLBuilder(AS_API_DOMAIN).addPath("api").addPath("series");
+        }
 
         if (query?.title) {
             urlBuilder = urlBuilder.addQuery(
@@ -793,8 +914,11 @@ export class AsuraScansExtension implements ExtensionImpl<typeof AsuraConfig> {
             items.push({
                 imageUrl: manga.cover_url ?? manga.cover,
                 title: manga.title,
-                mangaId: manga.slug,
-                subtitle: `Chapter ${chapterNumber}${isEarlyAccess ? " - (Early Access)" : ""}`,
+                mangaId:
+                    query.metadata?.showNovels && getShowNovels()
+                        ? "novel-" + manga.slug
+                        : manga.slug,
+                subtitle: `Chapter ${chapterNumber}${isEarlyAccess ? "🔒 " : ""}`,
                 contentRating: AsuraConfig.contentRating,
             });
         }
@@ -811,12 +935,6 @@ export class AsuraScansExtension implements ExtensionImpl<typeof AsuraConfig> {
             { id: "newest", label: "Newest" },
         ];
     }
-}
-
-declare class CanvasAPI {
-    constructor(width: number, height: number);
-    getContext(contextId: "2d"): CanvasRenderingContext2D;
-    toDataURL(): string;
 }
 
 export const AsuraScans = new AsuraScansExtension();

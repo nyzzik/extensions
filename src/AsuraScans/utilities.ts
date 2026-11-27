@@ -1,5 +1,5 @@
 import type { TagSection } from "@paperback/types";
-import type { TagSectionId } from "./interfaces/interfaces";
+import type { PageData, TagSectionId } from "./interfaces/interfaces";
 
 export async function setFilters(data: TagSection[]): Promise<void> {
     for (const section of data) {
@@ -38,4 +38,50 @@ export function getTagFromTagStore(tagId: TagSectionId, tags: TagSection[]): Tag
         throw new Error(`${tagId} Tag section not found`);
     }
     return tag;
+}
+
+export async function unscramble(this: void, data: PageData): Promise<string> {
+    const config = data;
+    if (!config.url || !config.tiles || !config.tile_cols || !config.tile_rows) {
+        return config.url;
+    }
+
+    const [res, buffer] = await Application.scheduleRequest({ url: config.url, method: "GET" });
+    let contentType = res.headers["Content-Type"];
+
+    let str: string = `data:${contentType};base64,${Application.base64Encode(buffer)}`;
+
+    return new Promise((res, reject) => {
+        const image = new Image();
+        // image.crossOrigin = "Anonymous";
+        image.onload = () => {
+            const canvas = new CanvasAPI(image.width, image.height);
+            const ctx = canvas.getContext("2d");
+
+            const tileW = image.width / config.tile_cols;
+            const tileH = image.height / config.tile_rows;
+
+            config.tiles.forEach((destIndex, sourceIndex) => {
+                const sx = (sourceIndex % config.tile_cols) * tileW;
+                const sy = Math.floor(sourceIndex / config.tile_cols) * tileH;
+
+                const dx = (destIndex % config.tile_cols) * tileW;
+                const dy = Math.floor(destIndex / config.tile_cols) * tileH;
+
+                ctx.drawImage(image, sx, sy, tileW, tileH, dx, dy, tileW, tileH);
+            });
+            res(canvas.toDataURL());
+        };
+        image.onerror = () => {
+            reject(new Error("Failed to load image for unscrambling."));
+        };
+        image.src = str;
+    });
+    return "";
+}
+
+declare class CanvasAPI {
+    constructor(width: number, height: number);
+    getContext(contextId: "2d"): CanvasRenderingContext2D;
+    toDataURL(): string;
 }
