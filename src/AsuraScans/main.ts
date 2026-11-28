@@ -365,7 +365,7 @@ export class AsuraScansExtension implements ExtensionImpl<typeof AsuraConfig> {
                         title: manga.title,
                         mangaId: manga.slug,
                         subtitle: `Chapter ${chapterNumber}${isEarlyAccess ? " 🔒" : ""}`,
-                        chapterId: manga.latest_chapters[0].id.toString() ?? 0,
+                        chapterId: latestChapter?.id.toString() ?? 0,
                         type: "chapterUpdatesCarouselItem",
                         contentRating: AsuraConfig.contentRating,
                     });
